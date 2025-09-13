@@ -1,33 +1,80 @@
+# Menú principal
 def main():
     while True:
-        # Mostrar el menú 
-        print("\n--- Menú Principal ---")
-        print("1. Registrarse")
-        print("2. Salir")
-        option = input("Seleccione una opción: ") # leer la opcion del usuario
+        print("******************")
+        print("*** BIENVENIDO ***")
+        print("******************")
+        print("1. Menú Usuario")
+        print("2. Menú Administrador")
+        opcion = input("Seleccione una opción: ")
+        """
+        print("Ingrese sus credenciales:\n")
+        user = input("Usuario: ")
+        password = input("Contraseña: ")
 
-        # Opción de registro
-        if option == '1':
-            register_user()  # Llamada a la función de registro (definirla abajo)
+        #usuario = authenticate_user(user, password)
+        
+        #if usuario:
+        """
+        match opcion:
+            case "1":
+            #if usuario.rol == 'usuario':
+                while True:
+                    print("********************")
+                    print("*** Menú Usuario ***")
+                    print("********************")
+                    print("1. Listar Slices")
+                    print("2. Crear Slice")
+                    print("3. Editar Slice")
+                    print("4. Borrar Slice")
+                    print("5. Salir")
+                    opcion_usuario = input("Seleccione una opción: ")
 
-        # Opción de salida
-        elif option == '2':
-            print("¡Hasta luego!")
-            break  # Sale del bucle y termina el programa
+                    match opcion_usuario:
+                        case "1":
+                            #list_user_topologias(user_id)
+                            print("ingreso a 1")
+                        case "2":
+                            #create_topologia(user_id, is_profesor)
+                            print("ingreso a 2")
+                        case "3":
+                            #manage_topologia_users(user_id)
+                            print("ingreso a 3")
+                        case "4":
+                            #delete_topologia(is_profesor, user_id)
+                            print("ingreso a 4")
+                        case "5":
+                            break
+                        case _:
+                            print("Opción Inválida")
 
-        # Opción inválida
-        else:
-            print("Opción inválida. Intente de nuevo.")
+            #elif usuario.rol = 'administrador':
+            case "2":
+                while True:
+                    print("**************************")
+                    print("*** Menú Administrador ***")
+                    print("**************************")
+                    print("1. Configurar Slices")
+                    print("2. Monitorear Recursos")
+                    print("3. Registrar Nuevo Usuario")
+                    print("4. Salir")
+                    opcion_admin = input("Seleccione una opción: ")
 
-def register_user():
-    """Función para registrar un nuevo usuario"""
-    print("\n--- Registro de Usuario ---")
-    username = input("Ingrese su nombre de usuario: ")
-    password = input("Ingrese su contraseña: ")
-    
-    # Aquí puedes agregar la lógica para almacenar el usuario (en una base de datos o archivo)
-    print(f"Usuario {username} registrado exitosamente.")
+                    match opcion_admin:
+                        case "1":
+                            #list_users()
+                            print("ingreso a 1")
+                        case "2":
+                            #create_user()
+                            print("ingreso a 2")
+                        case "3":
+                            #edit_user()
+                            print("ingreso a 3")
+                        case "4":
+                            break
+                        case _:
+                            print("Opción Inválida")
 
-# Ejecutar la función principal
+
 if __name__ == "__main__":
     main()
