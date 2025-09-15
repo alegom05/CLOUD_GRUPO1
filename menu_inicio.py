@@ -1,33 +1,40 @@
 def main():
-    while True:
-        # Mostrar el menú 
-        print("\n--- Menú Principal ---")
-        print("1. Registrarse")
-        print("2. Salir")
-        option = input("Seleccione una opción: ") # leer la opcion del usuario
-
-        # Opción de registro
-        if option == '1':
-            register_user()  # Llamada a la función de registro (definirla abajo)
-
-        # Opción de salida
-        elif option == '2':
-            print("¡Hasta luego!")
-            break  # Sale del bucle y termina el programa
-
-        # Opción inválida
-        else:
-            print("Opción inválida. Intente de nuevo.")
-
-def register_user():
-    """Función para registrar un nuevo usuario"""
-    print("\n--- Registro de Usuario ---")
-    username = input("Ingrese su nombre de usuario: ")
-    password = input("Ingrese su contraseña: ")
+     
+    print("***************************************")
+    print("*                                     *")
+    print("*   Bienvenido al Proyecto de Redes   *")
+    print("*              CLOUD                  *")
+    print("*                                     *")
+    print("***************************************")
     
-    # Aquí puedes agregar la lógica para almacenar el usuario (en una base de datos o archivo)
-    print(f"Usuario {username} registrado exitosamente.")
+    usuario = input("Usuario: ")
+    contraseña = input("Contraseña: ")
+    
+    print("\n***************************************")
+    print("*                                     *")
+    print("*    Bienvenido al Menú Principal     *")
+    print("*                                     *")
+    print("***************************************")
+    
+    while True:
+        print("\n1. Slices")
+        print("2. Estado de Recursos")
+        print("3. Usuarios")
+        print("4. Salir")
+        
+        opcion = input("Selecciona una opción: ")
+        
+        if opcion == "1":
+            print("Has seleccionado Slices.")
+        elif opcion == "2":
+            print("Has seleccionado Estado de Recursos.")
+        elif opcion == "3":
+            print("Has seleccionado Usuarios.")
+        elif opcion == "4":
+            print("Saliendo...")
+            break
+        else:
+            print("Opción inválida. Por favor selecciona una opción válida.")
 
-# Ejecutar la función principal
 if __name__ == "__main__":
     main()
