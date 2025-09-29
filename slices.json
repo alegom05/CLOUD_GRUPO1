@@ -1,0 +1,113 @@
+[
+  {
+    "id": "slice_20250928204617",
+    "name": "test 1",
+    "topology": "linear",
+    "vms": [
+      {
+        "cpu": 1,
+        "memory": 1024,
+        "disk": 10,
+        "id": "slice_20250928204617_vm_0",
+        "name": "test 1_vm_0",
+        "status": "pending",
+        "host": null
+      },
+      {
+        "cpu": 1,
+        "memory": 1024,
+        "disk": 10,
+        "id": "slice_20250928204617_vm_1",
+        "name": "test 1_vm_1",
+        "status": "pending",
+        "host": null
+      },
+      {
+        "cpu": 1,
+        "memory": 1024,
+        "disk": 10,
+        "id": "slice_20250928204617_vm_2",
+        "name": "test 1_vm_2",
+        "status": "pending",
+        "host": null
+      }
+    ],
+    "owner": "admin",
+    "created_at": "2025-09-28T20:46:17.903617",
+    "status": "creating"
+  },
+  {
+    "id": "slice_ec40bc9749e3",
+    "name": "2",
+    "topology": "ring",
+    "vms": [
+      {
+        "cpu": 1,
+        "memory": 1024,
+        "disk": 10,
+        "id": "slice_ec40bc9749e3_vm_0",
+        "name": "2_vm_0",
+        "status": "pending",
+        "host": null
+      },
+      {
+        "cpu": 1,
+        "memory": 1024,
+        "disk": 10,
+        "id": "slice_ec40bc9749e3_vm_1",
+        "name": "2_vm_1",
+        "status": "pending",
+        "host": null
+      },
+      {
+        "cpu": 1,
+        "memory": 1024,
+        "disk": 10,
+        "id": "slice_ec40bc9749e3_vm_2",
+        "name": "2_vm_2",
+        "status": "pending",
+        "host": null
+      }
+    ],
+    "owner": "admin",
+    "created_at": "2025-09-29T00:43:21.655261",
+    "status": "creating"
+  },
+  {
+    "id": "slice_c870d67e81c4",
+    "name": "TEST_SLICE_1",
+    "topology": "linear",
+    "vms": [
+      {
+        "cpu": 1,
+        "memory": 1024,
+        "disk": 10,
+        "id": "slice_c870d67e81c4_vm_0",
+        "name": "TEST_SLICE_1_vm_0",
+        "status": "pending",
+        "host": null
+      },
+      {
+        "cpu": 1,
+        "memory": 1024,
+        "disk": 10,
+        "id": "slice_c870d67e81c4_vm_1",
+        "name": "TEST_SLICE_1_vm_1",
+        "status": "pending",
+        "host": null
+      },
+      {
+        "cpu": 1,
+        "memory": 1024,
+        "disk": 10,
+        "id": "slice_c870d67e81c4_vm_2",
+        "name": "TEST_SLICE_1_vm_2",
+        "status": "pending",
+        "host": null
+      }
+    ],
+    "owner": "admin",
+    "created_at": "2025-09-29T00:48:52.536853",
+    "status": "creating"
+  }
+]
