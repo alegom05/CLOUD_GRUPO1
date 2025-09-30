@@ -4,10 +4,10 @@ from enum import Enum
 from datetime import datetime
 
 class TopologyType(str, Enum):
-    LINEAR = "linear"
-    RING = "ring"
-    TREE = "tree"
-    MESH = "mesh"
+    LINEAL = "lineal"
+    ANILLO = "anillo"
+    ARBOL = "arbol"
+    MALLA = "malla"
     BUS = "bus"
 
 class VMBase(BaseModel):

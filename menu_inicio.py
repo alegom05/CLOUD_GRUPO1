@@ -8,8 +8,10 @@ def main():
     manager = SliceManager()
     
     while True:
-        # Mostrar el menú
-        print("\n--- Menú Principal - PUCP Cloud Orchestrator ---")
+        # Mostrar el men
+        print("\n---- PUCP Cloud Orchestrator ----")
+        print("   Bienvenidos al Menú Principal")
+        print("---------------------------------")
         print("1. Registrar Usuario")
         print("2. Crear Slice")
         print("3. Listar Slices")
@@ -61,18 +63,18 @@ def create_slice_menu(manager):
     name = input("Nombre del slice: ")
     
     print("\nTopologías disponibles:")
-    print("1. Linear")
-    print("2. Ring (Anillo)")
-    print("3. Tree (Árbol)")
-    print("4. Mesh (Malla)")
+    print("1. Lineal")
+    print("2. Anillo")
+    print("3. Arbol")
+    print("4. Malla")
     print("5. Bus")
     
     topology_choice = input("Seleccione topología (1-5): ")
     topologies = {
-        '1': 'linear',
-        '2': 'ring',
-        '3': 'tree',
-        '4': 'mesh',
+        '1': 'lineal',
+        '2': 'anillo',
+        '3': 'arbol',
+        '4': 'malla',
         '5': 'bus'
     }
     
@@ -134,7 +136,7 @@ def delete_slice_menu(manager):
     print("\n--- Eliminar Slice ---")
     
     # Primero mostrar los slices disponibles
-    slices = manager.list_slices()
+    slices = manager.get_slices()
     if not slices:
         print("No hay slices para eliminar.")
         return
@@ -169,7 +171,7 @@ def view_slice_details(manager):
     """Ver detalles de un slice específico"""
     print("\n--- Detalles del Slice ---")
     
-    slices = manager.list_slices()
+    slices = manager.get_slices()
     if not slices:
         print("No hay slices creados.")
         return
@@ -207,73 +209,91 @@ def view_slice_details(manager):
     
 
 def draw_topology(topology_type: str, num_vms: int):
-    """Dibuja una representación ASCII de la topología"""
+    """Visualización clara y profesional de topologías"""
     
-    if topology_type == 'linear':
-        print("\n=== Topología LINEAR ===")
+    print(f"\n{'='*40}")
+    print(f" TOPOLOGÍA: {topology_type.upper()}")
+    print(f" VMs: {num_vms}")
+    print(f"{'='*40}\n")
+    
+    if topology_type == 'lineal':
+        # Cadena lineal
+        print("  ", end="")
         for i in range(num_vms):
+            print(f"[VM{i}]", end="")
             if i < num_vms - 1:
-                print(f"[VM{i}]---", end="")
-            else:
-                print(f"[VM{i}]")
-    
-    elif topology_type == 'ring':
-        print("\n=== Topología RING (Anillo) ===")
-        if num_vms == 3:
-            print("    [VM0]")
-            print("   /     \\")
-            print("[VM2]---[VM1]")
-        elif num_vms == 4:
-            print("  [VM0]---[VM1]")
-            print("   |       |")
-            print("  [VM3]---[VM2]")
+                print("──", end="")
+        print("\n")
+        
+    elif topology_type == 'anillo':
+        # Representación de anillo
+        if num_vms <= 6:
+            # Dibujo ASCII para pocos nodos
+            if num_vms == 3:
+                print("      ╔═VM0═╗")
+                print("      ║     ║")
+                print("    VM2═════VM1")
+                
+            elif num_vms == 4:
+                print("    VM0═════VM1")
+                print("     ║       ║")
+                print("     ║       ║")
+                print("    VM3═════VM2")
+                
+            elif num_vms == 5:
+                print("        VM0")
+                print("       ╱   ╲")
+                print("     VM4   VM1")
+                print("      │     │")
+                print("     VM3───VM2")
+                
+            elif num_vms == 6:
+                print("     VM0───VM1")
+                print("      │     │")
+                print("    VM5     VM2")
+                print("      │     │")
+                print("     VM4───VM3")
         else:
-            # Genérico para cualquier número
-            print("     [VM0]")
-            print("    /     \\")
-            for i in range(1, num_vms-1):
-                print(f"  [VM{i}]", end="")
-                if i < num_vms-2:
-                    print("---", end="")
-            print(f"\n    \\     /")
-            print(f"     [VM{num_vms-1}]")
-    
-    elif topology_type == 'tree':
-        print("\n=== Topología TREE (Árbol) ===")
-        print("       [VM0]")
-        print("      /  |  \\")
+            # Representación textual para muchos nodos
+            print("  ┌─────────────────────────┐")
+            print("  │    Anillo Circular      │")
+            print("  └─────────────────────────┘")
+            print("\n  Conexiones:")
+            for i in range(min(5, num_vms)):
+                next_node = (i + 1) % num_vms
+                print(f"    VM{i} ↔ VM{next_node}")
+            if num_vms > 5:
+                print(f"    ... ({num_vms - 5} conexiones más)")
+                
+    elif topology_type == 'arbol':
+        print("         [VM0]")
+        print("        /  |  \\")
         if num_vms >= 3:
-            print("   [VM1][VM2][VM3]")
+            print("    VM1  VM2  VM3")
         if num_vms >= 7:
-            print("    /|   |   |\\")
-            print("[VM4][VM5][VM6][VM7]")
-    
-    elif topology_type == 'mesh':
-        print("\n=== Topología MESH (Malla Completa) ===")
-        if num_vms == 3:
-            print("    [VM0]")
-            print("   /  |  \\")
-            print("[VM1]---[VM2]")
-        elif num_vms == 4:
-            print("  [VM0]---[VM1]")
-            print("   |\\ X /|")
-            print("   | X X |")
-            print("   |/ X \\|")
-            print("  [VM3]---[VM2]")
-        else:
-            print("(Todos conectados con todos)")
+            print("    / \\   |   / \\")
+            print("  VM4 VM5 VM6 VM7")
+            
+    elif topology_type == 'malla':
+        if num_vms <= 4:
+            print("  Todos ↔ Todos")
+            print("  ┌───────────┐")
             for i in range(num_vms):
-                print(f"[VM{i}]", end=" ")
-            print("\n* Cada VM conectada a todas las demás")
-    
+                print(f"  │    VM{i}    │")
+            print("  └───────────┘")
+        else:
+            print(f"  Malla completa: {num_vms} nodos")
+            print(f"  Enlaces totales: {num_vms*(num_vms-1)//2}")
+            
     elif topology_type == 'bus':
-        print("\n=== Topología BUS ===")
-        print("=========BUS=========")
+        print("  ═══════[BUS CENTRAL]═══════")
         for i in range(num_vms):
-            print(f"    |")
-            print(f"  [VM{i}]")
-    
-    print()  # Línea en blanco al final
+            print(f"           │")
+            print(f"         [VM{i}]")
+            
+    # Información adicional
+    print(f"\n  Estado: Activo")
+    print(f"  Conexiones: Establecidas")
 
 def view_slice_details(manager):
     """Ver detalles de un slice con visualización"""
