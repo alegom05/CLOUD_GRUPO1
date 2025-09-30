@@ -1,58 +1,99 @@
-from pydantic import BaseModel, Field
-from typing import List, Optional
+from dataclasses import dataclass, asdict, field
+from typing import List, Dict, Optional
 from enum import Enum
 from datetime import datetime
+@dataclass
+class SliceCreate:
+    name: str
+    topology: 'TopologyType'
+    num_vms: int
+    cpu: int = 1
+    memory: int = 1024
+    disk: int = 10
+    flavor: str = "small"
+    topology_segments: List['TopologySegment'] = field(default_factory=list)
 
-class TopologyType(str, Enum):
-    LINEAL = "lineal"
-    ANILLO = "anillo"
-    ARBOL = "arbol"
-    MALLA = "malla"
+class TopologyType(Enum):
+    SINGLE_VM = "single_vm"
+    LINEAR = "lineal"
+    RING = "anillo"
+    TREE = "arbol"
+    MESH = "malla"
     BUS = "bus"
+    MIXED = "mixta"
 
-class VMBase(BaseModel):
-    cpu: int = Field(default=1, ge=1, le=16)
-    memory: int = Field(default=1024, ge=512, le=32768)
-    disk: int = Field(default=10, ge=1, le=1000)
+class FlavorType(Enum):
+    TINY = "tiny"      # 1 CPU, 512MB RAM, 1GB Disk
+    SMALL = "small"    # 1 CPU, 2GB RAM, 20GB Disk
+    MEDIUM = "medium"  # 2 CPU, 4GB RAM, 40GB Disk
+    LARGE = "large"    # 4 CPU, 8GB RAM, 80GB Disk
+    XLARGE = "xlarge"  # 8 CPU, 16GB RAM, 160GB Disk
 
-class VM(VMBase):
+class UserRole(Enum):
+    SUPERADMIN = "superadmin"
+    ADMIN = "admin"
+    CLIENTE = "cliente"
+
+@dataclass
+class User:
+    username: str
+    password: str
+    role: UserRole
+
+@dataclass
+class VM:
     id: str
     name: str
+    cpu: int
+    memory: int
+    disk: int
+    flavor: str = "small"
     status: str = "pending"
-    host: Optional[str] = None
+    host: str = None
+    ip: str = None
+    topology_group: int = 0  # Para identificar a qué sub-topología pertenece
+    connections: List[str] = field(default_factory=list)  # IDs de VMs conectadas
+    
+    def to_dict(self):
+        return asdict(self)
 
-class SliceCreate(BaseModel):
-    name: str = Field(..., min_length=1, max_length=100)
-    topology: TopologyType
-    num_vms: int = Field(..., ge=1, le=20)
-    cpu: int = Field(default=1, ge=1, le=16)
-    memory: int = Field(default=1024, ge=512, le=32768)
-    disk: int = Field(default=10, ge=1, le=1000)
+@dataclass
+class TopologySegment:
+    """Representa un segmento de topología dentro de un slice mixto"""
+    type: TopologyType
+    vms: List[VM]
+    flavor: FlavorType
+    
+    def to_dict(self):
+        return {
+            'type': self.type.value,
+            'vms': [vm.to_dict() for vm in self.vms],
+            'flavor': self.flavor.value
+        }
 
-class Slice(BaseModel):
+@dataclass
+class Slice:
     id: str
     name: str
     topology: TopologyType
     vms: List[VM]
     owner: str
-    created_at: datetime
+    created_at: str
     status: str = "creating"
-
-class SliceResponse(BaseModel):
-    message: str
-    slice: Slice
-
-class SlicesListResponse(BaseModel):
-    slices: List[Slice]
-    total: int
-
-class UserLogin(BaseModel):
-    username: str
-    password: str
-
-class Token(BaseModel):
-    access_token: str
-    token_type: str
+    topology_segments: List[TopologySegment] = field(default_factory=list)
     
-class SliceStatusUpdate(BaseModel):
-    status: str = Field(..., pattern="^(creating|active|deleting|error|deleted)$")
+    def to_dict(self):
+        if hasattr(self.topology, 'value'):
+            topology_val = self.topology.value
+        else:
+            topology_val = self.topology
+        return {
+            'id': self.id,
+            'name': self.name,
+            'topology': topology_val,
+            'vms': [vm.to_dict() for vm in self.vms],
+            'owner': self.owner,
+            'created_at': self.created_at,
+            'status': self.status,
+            'topology_segments': [seg.to_dict() for seg in self.topology_segments]
+        }
