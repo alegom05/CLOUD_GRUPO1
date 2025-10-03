@@ -1,11 +1,10 @@
-from slice_manager.models import User, UserRole
 import hashlib
+from .slice_manager.models import User, UserRole
 
 class AuthManager:
     def __init__(self):
         # Usuarios hardcodeados según especificación
         self.users = {
-            "superadmin": User("superadmin", self._hash_password("superadmin"), UserRole.SUPERADMIN),
             "admin": User("admin", self._hash_password("admin"), UserRole.ADMIN),
             "cliente": User("cliente", self._hash_password("cliente"), UserRole.CLIENTE)
         }
@@ -34,23 +33,6 @@ class AuthManager:
             return False
         
         permissions = {
-            UserRole.SUPERADMIN: [
-                "manage_users",
-                "access_all_system", 
-                "manage_global_resources",
-                "monitor_all",
-                "access_all_logs",
-                "manage_global_security",
-                "provision_all_clusters",
-                "access_ui",
-                "manage_slices",
-                "manage_topologies",
-                "access_apis",
-                "deploy_all_clusters",
-                "configure_firewall",
-                "access_all_resources",
-                "access_test_plans"
-            ],
             UserRole.ADMIN: [
                 "access_all_system",
                 "manage_global_resources",

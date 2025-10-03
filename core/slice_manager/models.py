@@ -30,7 +30,6 @@ class FlavorType(Enum):
     XLARGE = "xlarge"  # 8 CPU, 16GB RAM, 160GB Disk
 
 class UserRole(Enum):
-    SUPERADMIN = "superadmin"
     ADMIN = "admin"
     CLIENTE = "cliente"
 
