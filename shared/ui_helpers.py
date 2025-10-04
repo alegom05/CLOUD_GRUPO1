@@ -1,3 +1,7 @@
+import os
+import time
+import getpass 
+from .colors import Colors
 """
 Utilidades compartidas para la interfaz de usuario
 """
@@ -39,29 +43,38 @@ def print_header(user=None):
 
 
 def login_screen(auth_manager):
-    """Pantalla de login"""
+    """Pantalla de login con API externa"""
     while True:
         print_header()
         print("\n" + Colors.BOLD + "  AUTENTICACIÓN" + Colors.ENDC)
         print("  " + "-"*30)
         
-        # Mostrar credenciales disponibles para demo
-        print("\n  " + Colors.YELLOW + "Credenciales de prueba:" + Colors.ENDC)
-        print("  • admin / admin")
-        print("  • cliente / cliente")
+        print("\n  " + Colors.YELLOW + "Autenticación con API Externa" + Colors.ENDC)
+        print("  Ingrese sus credenciales:")
         print()
         
-        username = input("  Usuario: ")
-        password = input("  Contraseña: ")
+        correo = input("  Email: ")
+        password = getpass.getpass("  Contraseña: ")  # ← Cambiado aquí
         
-        if auth_manager.login(username, password):
+        print("\n  Conectando con API de autenticación...")
+        
+        if auth_manager.login(correo, password):
             print(Colors.GREEN + "\n  ✓ Autenticación exitosa!" + Colors.ENDC)
+            
+            if auth_manager.current_user:
+                nombre = getattr(auth_manager.current_user, 'nombre_completo', '')
+                if nombre:
+                    print(f"  Bienvenido: {nombre}")
+            
             time.sleep(1)
             return True
         else:
-            print(Colors.RED + "\n  ✗ Credenciales incorrectas" + Colors.ENDC)
-            time.sleep(2)
-
+            print(Colors.RED + "\n  ✗ Credenciales incorrectas o error de conexión" + Colors.ENDC)
+            print("  Verifica que:")
+            print("  • Las credenciales sean correctas")
+            print("  • El túnel SSH esté activo (si es necesario)")
+            print("  • La API esté corriendo")
+            time.sleep(3)
 
 def pause(message: str = "\n  Presione Enter para continuar..."):
     """Pausa la ejecución hasta que el usuario presione Enter"""

@@ -1,3 +1,7 @@
+from shared.colors import Colors
+from shared.ui_helpers import print_header
+
+
 
 def admin_menu(auth_manager, slice_manager):
     """Menú para ADMIN (área específica)"""
@@ -35,20 +39,6 @@ def admin_menu(auth_manager, slice_manager):
             delete_area_slice(slice_manager, auth_manager.current_user)
         elif choice == '4':
             manage_area_resources(slice_manager)
-        elif choice == '5':
-            manage_topologies()
-        elif choice == '6':
-            monitor_area(slice_manager, auth_manager.current_user)
-        elif choice == '7':
-            view_area_logs(auth_manager.current_user)
-        elif choice == '8':
-            configure_area_security()
-        elif choice == '9':
-            ver_detalles_slice(slice_manager, auth_manager.current_user)
-        elif choice == '10':
-            provision_area_clusters(auth_manager.current_user)
-        elif choice == '11':
-            access_apis()
         elif choice == '0':
             auth_manager.logout()
             break
