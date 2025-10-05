@@ -16,13 +16,26 @@ def view_my_slices(slice_manager, user):
     if not slices:
         print("\n  No tienes slices creados")
     else:
-        for s in slices:
-            print(f"\n  • {Colors.YELLOW}{s.name}{Colors.ENDC}")
-            print(f"    ID: {s.id}")
+        for i, s in enumerate(slices, 1):
             topology_name = s.topology.value if hasattr(s.topology, 'value') else s.topology
-            print(f"    Topología: {topology_name}")
-            print(f"    VMs: {len(s.vms)}")
+            
+            print(f"\n  {i}. {Colors.YELLOW}{s.name}{Colors.ENDC}")
+            print(f"     ID: {s.id}")
+            print(f"     Topología: {topology_name}")
+            print(f"     VMs: {len(s.vms)}")
         
+        # Opción para ver gráfico
+        print("\n  ¿Desea ver el diagrama de conexiones de algún slice? (s/n): ", end="")
+        if input().lower() == 's':
+            num = input("  Número de slice: ")
+            if num.isdigit():
+                idx = int(num) - 1
+                if 0 <= idx < len(slices):
+                    from shared.topology.graph_drawer import draw_topology_graph
+                    s = slices[idx]
+                    topology_name = s.topology.value if hasattr(s.topology, 'value') else s.topology
+                    draw_topology_graph(topology_name, len(s.vms))
+    
     pause()
 
 
