@@ -71,18 +71,18 @@ class SliceBuilder:
                     return None, None, None
         
     def _solicitar_nombre(self) -> str:
-        """Solicita el nombre del slice"""
+        """Solicita el nombre del slice. Permite cancelar con '0'."""
         while True:
-            nombre = input("\n  Nombre del slice (máx 20 caracteres): ").strip()
-            
+            nombre = input("\n  Nombre del slice (máx 20 caracteres, 0 para cancelar): ").strip()
+            if nombre == '0':
+                print("\nOperación cancelada. Regresando al menú principal...")
+                return None
             if not nombre:
                 show_error("El nombre no puede estar vacío")
                 continue
-            
             if len(nombre) > 20:
                 show_error("El nombre debe tener máximo 20 caracteres")
                 continue
-            
             return nombre
     
     def _agregar_nodos(self):
@@ -96,8 +96,10 @@ class SliceBuilder:
         print("  1. Agregar VMs individuales")
         print("  2. Agregar topología completa (configura VMs automáticamente)")
         
-        modo = input("\n  Seleccione: ")
-        
+        modo = input("\n  Seleccione (0 para cancelar): ")
+        if modo == '0':
+            print("\nOperación cancelada. Regresando al menú principal...")
+            raise SystemExit
         if modo == '2':
             self._agregar_topologia_con_vms()
         else:
@@ -130,36 +132,50 @@ class SliceBuilder:
     def _agregar_topologia_con_vms(self):
         """Agregar una topología completa con sus VMs"""
         print("\n  Topologías disponibles:")
-        print("  1. Lineal")
-        print("  2. Anillo")
-        print("  3. Árbol")
-        print("  4. Malla")
-        print("  5. Bus")
-        
-        topo_choice = input("\n  Seleccione topología: ")
-        
+        print("  1. Lineal (mínimo 2 VMs)")
+        print("  2. Anillo (mínimo 3 VMs)")
+        print("  3. Árbol (mínimo 3 VMs)")
+        print("  4. Malla (mínimo 3 VMs)")
+        print("  5. Bus (mínimo 2 VMs)")
+
+        topo_choice = input("\n  Seleccione topología (0 para cancelar): ")
+        if topo_choice == '0':
+            print("\nOperación cancelada. Regresando al menú principal...")
+            raise SystemExit
+
         topo_tipos = {
-            '1': 'lineal',
-            '2': 'anillo',
-            '3': 'arbol',
-            '4': 'malla',
-            '5': 'bus'
+            '1': ('lineal', 2),
+            '2': ('anillo', 3),
+            '3': ('arbol', 3),
+            '4': ('malla', 3),
+            '5': ('bus', 2)
         }
-        
-        topo_tipo = topo_tipos.get(topo_choice, 'lineal')
-        
-        # Solicitar número de VMs para esta topología
-        num_vms = int(input(f"\n  Número de VMs para {topo_tipo}: "))
-        
+
+        topo_tipo, min_vms = topo_tipos.get(topo_choice, ('lineal', 2))
+
+        while True:
+            try:
+                num_vms_input = input(f"\n  Número de VMs para {topo_tipo} (mínimo {min_vms}, 0 para cancelar): ")
+                if num_vms_input == '0':
+                    print("\nOperación cancelada. Regresando al menú principal...")
+                    raise SystemExit
+                num_vms = int(num_vms_input)
+                if num_vms < min_vms:
+                    show_error(f"La topología {topo_tipo} requiere al menos {min_vms} VMs.")
+                else:
+                    break
+            except ValueError:
+                show_error("Debe ingresar un número válido.")
+
         # Solicitar flavor para todas las VMs de esta topología
         print(f"\n  Flavor para las {num_vms} VMs de {topo_tipo}:")
         flavor = select_flavor()
         specs = get_flavor_specs(flavor)
-        
+
         # Crear VMs
         inicio_vm = len(self.vms) + 1
         vms_indices = []
-        
+
         for i in range(num_vms):
             num_vm = inicio_vm + i
             vm_data = {
@@ -171,17 +187,17 @@ class SliceBuilder:
             }
             self.vms.append(vm_data)
             vms_indices.append(len(self.vms) - 1)
-        
+
         # Guardar topología
         self.topologias.append({
             "tipo": topo_tipo,
             "vms": vms_indices,
             "num_vms": num_vms
         })
-        
+
         # Crear enlaces automáticamente según la topología
         self._crear_enlaces_automaticos(topo_tipo, vms_indices)
-        
+
         show_success(f"Topología {topo_tipo} con {num_vms} VMs agregada")
     
     def _crear_enlaces_automaticos(self, tipo: str, vms_indices: List[int]):
@@ -224,7 +240,7 @@ class SliceBuilder:
         
         # Mostrar VMs disponibles
         print("\n  VMs disponibles:")
-        for i, vm in enumerate(self.vms):
+        for i, vm in enumerate(self.vms, 1):
             print(f"  {i}. {vm['nombre']} ({vm['flavor']})")
         
         # Mostrar enlaces existentes
@@ -235,12 +251,16 @@ class SliceBuilder:
         
         while True:
             print()
-            origen = input("  VM origen (número o Enter para terminar): ")
-            
+            origen = input("  VM origen (número, 0 para cancelar, o Enter para terminar): ")
+            if origen == '0':
+                print("\nOperación cancelada. Regresando al menú principal...")
+                raise SystemExit
             if not origen:
                 break
-            
-            destino = input("  VM destino: ")
+            destino = input("  VM destino (0 para cancelar): ")
+            if destino == '0':
+                print("\nOperación cancelada. Regresando al menú principal...")
+                raise SystemExit
             
             try:
                 origen_idx = int(origen)

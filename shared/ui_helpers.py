@@ -17,6 +17,7 @@ class Colors:
     HEADER = '\033[95m'
     BLUE = '\033[94m'
     GREEN = '\033[92m'
+    OKGREEN = '\033[92m'
     YELLOW = '\033[93m'
     RED = '\033[91m'
     ENDC = '\033[0m'
@@ -42,39 +43,17 @@ def print_header(user=None):
         print(Colors.BLUE + "-"*60 + Colors.ENDC)
 
 
-def login_screen(auth_manager):
-    """Pantalla de login con API externa"""
-    while True:
-        print_header()
-        print("\n" + Colors.BOLD + "  AUTENTICACIÓN" + Colors.ENDC)
-        print("  " + "-"*30)
-        
-        print("\n  " + Colors.YELLOW + "Autenticación con API Externa" + Colors.ENDC)
-        print("  Ingrese sus credenciales:")
-        print()
-        
-        correo = input("  Email: ")
-        password = getpass.getpass("  Contraseña: ")  # ← Cambiado aquí
-        
-        print("\n  Conectando con API de autenticación...")
-        
-        if auth_manager.login(correo, password):
-            print(Colors.GREEN + "\n  ✓ Autenticación exitosa!" + Colors.ENDC)
-            
-            if auth_manager.current_user:
-                nombre = getattr(auth_manager.current_user, 'nombre_completo', '')
-                if nombre:
-                    print(f"  Bienvenido: {nombre}")
-            
-            time.sleep(1)
-            return True
-        else:
-            print(Colors.RED + "\n  ✗ Credenciales incorrectas o error de conexión" + Colors.ENDC)
-            print("  Verifica que:")
-            print("  • Las credenciales sean correctas")
-            print("  • El túnel SSH esté activo (si es necesario)")
-            print("  • La API esté corriendo")
-            time.sleep(3)
+def login_screen(auth_manager) -> tuple:
+    """Pantalla de login: solo pide correo y password y los retorna"""
+    print_header()
+    print("\n" + Colors.BOLD + "  AUTENTICACIÓN" + Colors.ENDC)
+    print("  " + "-"*30)
+    print("\n  " + Colors.YELLOW + "Autenticación con API Externa" + Colors.ENDC)
+    print("  Ingrese sus credenciales:")
+    print()
+    correo = input("  Email: ")
+    password = getpass.getpass("  Contraseña: ")
+    return correo, password
 
 def pause(message: str = "\n  Presione Enter para continuar..."):
     """Pausa la ejecución hasta que el usuario presione Enter"""

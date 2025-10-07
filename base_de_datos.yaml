@@ -1,0 +1,28 @@
+slices:
+- id: local
+  nombre: slice_1
+  topologia: manual-2VMS
+  usuario: maria.garcia@email.com
+  vlan: local
+  vms:
+  - cpu: 1
+    disk: 1
+    flavor: tiny
+    memory: 512
+    nombre: vm1
+  - cpu: 1
+    disk: 20
+    flavor: small
+    memory: 2048
+    nombre: vm2
+- id: 1
+  nombre: slice_admin
+  topologia: manual-1VMS
+  usuario: rodrigolujanf28@gmail.com
+  vlan: 2
+  vms:
+  - cpu: 1
+    disk: 1
+    flavor: tiny
+    memory: 512
+    nombre: vm1

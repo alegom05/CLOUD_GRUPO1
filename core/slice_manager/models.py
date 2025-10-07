@@ -3,6 +3,7 @@ from typing import List, Dict, Optional
 from enum import Enum
 from datetime import datetime
 @dataclass
+
 class SliceCreate:
     name: str
     topology: 'TopologyType'
@@ -32,6 +33,7 @@ class FlavorType(Enum):
 class UserRole(Enum):
     ADMIN = "admin"
     CLIENTE = "cliente"
+    USUARIO_AVANZADO = "usuario_avanzado"
 
 @dataclass
 class User:
