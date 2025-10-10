@@ -32,6 +32,8 @@ class SliceBuilder:
         
         # Paso 1: Nombre del slice
         self.nombre_slice = self._solicitar_nombre()
+        if self.nombre_slice is None:
+            return None, None, None
         
         while True:
             print_header(self.user)
@@ -43,11 +45,10 @@ class SliceBuilder:
             
             # Menú de opciones
             print(Colors.YELLOW + "\n  Opciones:" + Colors.ENDC)
-            print("  1. Agregar Nodos (VMs)")
+            print("  1. Agregar Nodos y/o Topologías")
             print("  2. Agregar Enlaces")
-            print("  3. Definir Topología")
-            print("  4. Ver Resumen")
-            print(Colors.GREEN + "  5. Finalizar y Crear Slice" + Colors.ENDC)
+            print("  3. Ver Resumen")
+            print(Colors.GREEN + "  4. Finalizar y Crear Slice" + Colors.ENDC)
             print(Colors.RED + "  0. Cancelar" + Colors.ENDC)
             
             choice = input("\n  Seleccione opción: ")
@@ -57,10 +58,8 @@ class SliceBuilder:
             elif choice == '2':
                 self._agregar_enlaces()
             elif choice == '3':
-                self._definir_topologia()
-            elif choice == '4':
                 self._mostrar_resumen_detallado()
-            elif choice == '5':
+            elif choice == '4':
                 if self._validar_configuracion():
                     return self._generar_datos_slice()
                 else:
@@ -99,7 +98,7 @@ class SliceBuilder:
         modo = input("\n  Seleccione (0 para cancelar): ")
         if modo == '0':
             print("\nOperación cancelada. Regresando al menú principal...")
-            raise SystemExit
+            return
         if modo == '2':
             self._agregar_topologia_con_vms()
         else:
@@ -141,7 +140,7 @@ class SliceBuilder:
         topo_choice = input("\n  Seleccione topología (0 para cancelar): ")
         if topo_choice == '0':
             print("\nOperación cancelada. Regresando al menú principal...")
-            raise SystemExit
+            return
 
         topo_tipos = {
             '1': ('lineal', 2),
@@ -158,7 +157,7 @@ class SliceBuilder:
                 num_vms_input = input(f"\n  Número de VMs para {topo_tipo} (mínimo {min_vms}, 0 para cancelar): ")
                 if num_vms_input == '0':
                     print("\nOperación cancelada. Regresando al menú principal...")
-                    raise SystemExit
+                    return
                 num_vms = int(num_vms_input)
                 if num_vms < min_vms:
                     show_error(f"La topología {topo_tipo} requiere al menos {min_vms} VMs.")
@@ -254,17 +253,21 @@ class SliceBuilder:
             origen = input("  VM origen (número, 0 para cancelar, o Enter para terminar): ")
             if origen == '0':
                 print("\nOperación cancelada. Regresando al menú principal...")
-                raise SystemExit
+                return
             if not origen:
                 break
             destino = input("  VM destino (0 para cancelar): ")
             if destino == '0':
                 print("\nOperación cancelada. Regresando al menú principal...")
-                raise SystemExit
+                return
             
             try:
-                origen_idx = int(origen)
-                destino_idx = int(destino)
+                origen_num = int(origen)
+                destino_num = int(destino)
+                
+                # Convertir de números basados en 1 a índices basados en 0
+                origen_idx = origen_num - 1
+                destino_idx = destino_num - 1
                 
                 if 0 <= origen_idx < len(self.vms) and 0 <= destino_idx < len(self.vms):
                     if origen_idx != destino_idx:
@@ -282,11 +285,6 @@ class SliceBuilder:
             except ValueError:
                 show_error("Debe ingresar números")
     
-    def _definir_topologia(self):
-        """Definir topología del slice"""
-        show_info("Las topologías ya se definen al agregar nodos con topología completa")
-        pause()
-    
     def _mostrar_resumen(self):
         """Muestra resumen compacto"""
         print(f"\n  VMs: {len(self.vms)} | Enlaces: {len(self.enlaces)} | Topologías: {len(self.topologias)}")
@@ -299,7 +297,7 @@ class SliceBuilder:
         
         # VMs
         print(Colors.YELLOW + "\n  Máquinas Virtuales:" + Colors.ENDC)
-        for i, vm in enumerate(self.vms):
+        for i, vm in enumerate(self.vms, 1):
             print(f"  {i}. {vm['nombre']} - Flavor: {vm['flavor']} ({vm['cpu']} CPU, {vm['memory']}MB RAM, {vm['disk']}GB)")
         
         # Enlaces

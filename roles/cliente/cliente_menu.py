@@ -3,48 +3,20 @@
 from shared.ui_helpers import print_header, get_menu_choice, pause
 from shared.colors import Colors
 from shared.views.slice_builder import SliceBuilder
-from core.services.slice_api_service import SliceAPIService
 import os
 
 
 def cliente_menu(auth_manager, slice_manager, auth_service=None):
     """
-    Menú del cliente con nuevo constructor de slices
+    Menú del cliente con funcionamiento local
     
     Args:
         auth_manager: Gestor de autenticación local
         slice_manager: Gestor de slices
-        auth_service: Servicio de API externa (opcional)
+        auth_service: Servicio de API externa (no usado)
     """
     
-    # Obtener token - priorizar auth_service si está disponible
-    if auth_service and auth_service.token:
-        token = auth_service.token
-        print(f"{Colors.GREEN}[DEBUG] Usando token de auth_service{Colors.ENDC}")
-    elif hasattr(auth_manager, 'api_service') and auth_manager.api_service:
-        token = auth_manager.api_service.token
-        print(f"{Colors.YELLOW}[DEBUG] Usando token de auth_manager.api_service{Colors.ENDC}")
-    elif auth_manager.get_api_token():
-        token = auth_manager.get_api_token()
-        print(f"{Colors.YELLOW}[DEBUG] Usando token de auth_manager{Colors.ENDC}")
-    else:
-        print(f"{Colors.RED}[ERROR] No se pudo obtener token de autenticación{Colors.ENDC}")
-        pause()
-        return
-    
-    # Configurar URL de la API
-    api_url = os.getenv('AUTH_API_URL', 'http://localhost:8080').replace('/auth', '')
-    
-    # Obtener email del usuario
-    user_email = auth_manager.get_current_user_email()
-    
-    # Inicializar servicio de slices
-    slice_api = SliceAPIService(api_url, token, user_email)
-    
     while True:
-        # Verificar que la sesión siga válida (solo para sesiones externas)
-        if auth_service and not _verificar_sesion(auth_service, auth_manager):
-            break
 
         # Encabezado unificado
         print(Colors.BLUE + "="*70 + Colors.ENDC)
@@ -74,15 +46,15 @@ def cliente_menu(auth_manager, slice_manager, auth_service=None):
         choice = input("\nSeleccione opción: ")
 
         if choice == '1':
-            _crear_slice(slice_api, auth_manager, slice_builder=SliceBuilder)
+            _crear_slice(auth_manager, slice_builder=SliceBuilder)
         elif choice == '2':
-            _ver_mis_slices(slice_api, auth_manager.current_user)
+            _ver_mis_slices(auth_manager.current_user)
         elif choice == '3':
-            _ver_detalles_slice(slice_api, auth_manager.current_user)
+            _ver_detalles_slice(auth_manager.current_user)
         elif choice == '4':
-            _editar_slice(slice_api, auth_manager)
+            _editar_slice(auth_manager)
         elif choice == '5':
-            _eliminar_slice(slice_api, auth_manager)
+            _eliminar_slice(auth_manager)
         elif choice == '6':
             _pausar_reactivar_slice(auth_manager)
         elif choice == '0':
@@ -94,7 +66,7 @@ def cliente_menu(auth_manager, slice_manager, auth_service=None):
 def _pausar_reactivar_slice(auth_manager):
     """Permite pausar o reactivar un slice del usuario actual"""
     import yaml, os
-    BASE_YAML = os.path.join(os.path.dirname(__file__), '..', 'base_de_datos.yaml')
+    BASE_YAML = os.path.join(os.path.dirname(__file__), '..', '..', 'base_de_datos.yaml')
     if os.path.exists(BASE_YAML):
         with open(BASE_YAML, 'r', encoding='utf-8') as f:
             data = yaml.safe_load(f) or {}
@@ -204,12 +176,11 @@ def _verificar_estado_sesion(auth_service):
     pause()
 
 
-def _crear_slice(slice_api, auth_manager, slice_builder):
+def _crear_slice(auth_manager, slice_builder):
     """
     Crear un nuevo slice usando el constructor interactivo
     
     Args:
-        slice_api: Servicio de API de slices
         auth_manager: Gestor de autenticación
         slice_builder: Clase SliceBuilder para construcción interactiva
     """
@@ -230,28 +201,32 @@ def _crear_slice(slice_api, auth_manager, slice_builder):
         nombre, topologia, vms_data = builder.start()
         
         if nombre and topologia and vms_data:
-            try:
-                print(f"\n{Colors.CYAN}⏳ Creando slice en la API...{Colors.ENDC}")
-                resultado = slice_api.create_slice(nombre, topologia, vms_data)
-                if resultado:
-                    from shared.ui_helpers import show_success
-                    vlan = resultado.get('vlan', 'N/A')
-                    slice_id = resultado.get('id', 'N/A')
-                    show_success(f"Slice creado exitosamente")
-                    print(f"\n{Colors.GREEN}  Detalles del Slice:{Colors.ENDC}")
-                    print(f"  • ID: {slice_id}")
-                    print(f"  • VLAN: {vlan}")
-                    print(f"  • Nombre: {nombre}")
-                    print(f"  • Topología: {topologia}")
-                    print(f"  • VMs: {len(vms_data)}")
-                else:
-                    raise Exception("API no respondió correctamente")
-            except Exception:
-                # Ocultar logs de error de API, solo mostrar mensaje de guardado local
-                vlan = 'local'
-                slice_id = 'local'
-                print(f"{Colors.YELLOW}No se pudo conectar con la API. El slice y las VMs se guardarán localmente...{Colors.ENDC}")
-            # Guardar slice y VMs en archivos SIEMPRE
+            # DESHABILITADO: Crear slice en API
+            # try:
+            #     print(f"\n{Colors.CYAN}⏳ Creando slice en la API...{Colors.ENDC}")
+            #     resultado = slice_api.create_slice(nombre, topologia, vms_data)
+            #     if resultado:
+            #         from shared.ui_helpers import show_success
+            #         vlan = resultado.get('vlan', 'N/A')
+            #         slice_id = resultado.get('id', 'N/A')
+            #         show_success(f"Slice creado exitosamente")
+            #         print(f"\n{Colors.GREEN}  Detalles del Slice:{Colors.ENDC}")
+            #         print(f"  • ID: {slice_id}")
+            #         print(f"  • VLAN: {vlan}")
+            #         print(f"  • Nombre: {nombre}")
+            #         print(f"  • Topología: {topologia}")
+            #         print(f"  • VMs: {len(vms_data)}")
+            #     else:
+            #         raise Exception("API no respondió correctamente")
+            # except Exception:
+            #     # Ocultar logs de error de API, solo mostrar mensaje de guardado local
+            
+            # Trabajar solo con archivos locales
+            vlan = 'local'
+            slice_id = 'local'
+            print(f"{Colors.CYAN}📁 Guardando slice localmente...{Colors.ENDC}")
+            
+            # Guardar slice y VMs en archivos SIEMPRE (tanto si la API funciona como si no)
             try:
                 from shared.data_store import guardar_slice, guardar_vms
                 # Guardar slice primero para obtener el id y vlan reales
@@ -267,7 +242,7 @@ def _crear_slice(slice_api, auth_manager, slice_builder):
 
                 # Leer el valor real de vlan (autoincremental) desde base_de_datos.yaml
                 import yaml, os
-                BASE_YAML = os.path.join(os.path.dirname(__file__), '..', 'base_de_datos.yaml')
+                BASE_YAML = os.path.join(os.path.dirname(__file__), '..', '..', 'base_de_datos.yaml')
                 with open(BASE_YAML, 'r', encoding='utf-8') as f:
                     data = yaml.safe_load(f) or {}
                 vlan_real = None
@@ -316,12 +291,11 @@ def _crear_slice(slice_api, auth_manager, slice_builder):
     pause()
 
 
-def _ver_mis_slices(slice_api, user):
+def _ver_mis_slices(user):
     """
     Ver slices del usuario
     
     Args:
-        slice_api: Servicio de API de slices
         user: Usuario actual
     """
     print_header(user)
@@ -329,20 +303,34 @@ def _ver_mis_slices(slice_api, user):
     print("  " + "="*50)
     
     try:
-        print(f"\n{Colors.CYAN}⏳ Cargando slices...{Colors.ENDC}")
-        slices = slice_api.get_my_slices()
+        print(f"\n{Colors.CYAN}📁 Cargando slices desde archivos locales...{Colors.ENDC}")
         
-        if not slices:
+        # Leer slices desde archivo local
+        import yaml, os
+        BASE_YAML = os.path.join(os.path.dirname(__file__), '..', '..', 'base_de_datos.yaml')
+        if os.path.exists(BASE_YAML):
+            with open(BASE_YAML, 'r', encoding='utf-8') as f:
+                data = yaml.safe_load(f) or {}
+            slices = data.get('slices', [])
+        else:
+            slices = []
+        
+        # Filtrar slices del usuario actual
+        usuario_actual = getattr(user, 'username', '')
+        slices_usuario = [s for s in slices if s.get('usuario') == usuario_actual]
+        
+        if not slices_usuario:
             print(f"\n{Colors.YELLOW}  📋 No tienes slices creados{Colors.ENDC}")
             print(f"{Colors.CYAN}  Usa la opción 1 para crear tu primer slice{Colors.ENDC}")
         else:
-            print(f"\n{Colors.GREEN}  Total de slices: {len(slices)}{Colors.ENDC}\n")
+            print(f"\n{Colors.GREEN}  Total de slices: {len(slices_usuario)}{Colors.ENDC}\n")
             
-            for i, s in enumerate(slices, 1):
-                print(f"{Colors.YELLOW}  [{i}] {s['nombre_slice']}{Colors.ENDC}")
-                print(f"      ID: {Colors.CYAN}{s['id']}{Colors.ENDC}")
-                print(f"      VLAN: {Colors.GREEN}{s['vlan']}{Colors.ENDC}")
-                print(f"      Topología: {s['topologia']}")
+            for i, s in enumerate(slices_usuario, 1):
+                nombre = s.get('nombre', s.get('nombre_slice', 'Sin nombre'))
+                print(f"{Colors.YELLOW}  [{i}] {nombre}{Colors.ENDC}")
+                print(f"      ID: {Colors.CYAN}{s.get('id', 'local')}{Colors.ENDC}")
+                print(f"      VLAN: {Colors.GREEN}{s.get('vlan', 'N/A')}{Colors.ENDC}")
+                print(f"      Topología: {s.get('topologia', 'N/A')}")
                 print(f"      VMs: {len(s.get('vms', []))}")
                 print(f"      Estado: {s.get('estado', 'activo')}")
                 print()
@@ -354,12 +342,11 @@ def _ver_mis_slices(slice_api, user):
     pause()
 
 
-def _ver_detalles_slice(slice_api, user):
+def _ver_detalles_slice(user):
     """
     Ver detalles completos de un slice
     
     Args:
-        slice_api: Servicio de API de slices
         user: Usuario actual
     """
     print_header(user)
@@ -367,17 +354,32 @@ def _ver_detalles_slice(slice_api, user):
     print("  " + "="*50)
     
     try:
-        slices = slice_api.get_my_slices()
+        print(f"\n{Colors.CYAN}📁 Cargando slices desde archivos locales...{Colors.ENDC}")
         
-        if not slices:
+        # Leer slices desde archivo local
+        import yaml, os
+        BASE_YAML = os.path.join(os.path.dirname(__file__), '..', '..', 'base_de_datos.yaml')
+        if os.path.exists(BASE_YAML):
+            with open(BASE_YAML, 'r', encoding='utf-8') as f:
+                data = yaml.safe_load(f) or {}
+            slices = data.get('slices', [])
+        else:
+            slices = []
+        
+        # Filtrar slices del usuario actual
+        usuario_actual = getattr(user, 'username', '')
+        slices_usuario = [s for s in slices if s.get('usuario') == usuario_actual]
+        
+        if not slices_usuario:
             from shared.ui_helpers import show_info
             show_info("No tienes slices")
             pause()
             return
         
         print(f"\n{Colors.CYAN}  Seleccione slice:{Colors.ENDC}")
-        for i, s in enumerate(slices, 1):
-            print(f"  {i}. {s['nombre_slice']} (VLAN: {s['vlan']})")
+        for i, s in enumerate(slices_usuario, 1):
+            nombre = s.get('nombre', s.get('nombre_slice', 'Sin nombre'))
+            print(f"  {i}. {nombre} (VLAN: {s.get('vlan', 'N/A')})")
         
         print(f"  0. Cancelar")
         
@@ -388,36 +390,33 @@ def _ver_detalles_slice(slice_api, user):
         
         try:
             idx = int(choice) - 1
-            if 0 <= idx < len(slices):
-                slice_id = slices[idx]['id']
+            if 0 <= idx < len(slices_usuario):
+                slice_seleccionado = slices_usuario[idx]
                 
-                print(f"\n{Colors.CYAN}⏳ Cargando detalles...{Colors.ENDC}")
-                detalles = slice_api.get_slice_details(slice_id)
+                print_header(user)
+                nombre = slice_seleccionado.get('nombre', slice_seleccionado.get('nombre_slice', 'Sin nombre'))
+                print(Colors.BOLD + f"\n  SLICE: {nombre}" + Colors.ENDC)
+                print("  " + "="*50)
                 
-                if detalles:
-                    print_header(user)
-                    print(Colors.BOLD + f"\n  SLICE: {detalles['nombre_slice']}" + Colors.ENDC)
-                    print("  " + "="*50)
-                    
-                    print(f"\n{Colors.YELLOW}  Información General:{Colors.ENDC}")
-                    print(f"  • ID: {detalles['id']}")
-                    print(f"  • VLAN: {Colors.GREEN}{detalles['vlan']}{Colors.ENDC}")
-                    print(f"  • Topología: {detalles['topologia']}")
-                    print(f"  • Estado: {detalles.get('estado', 'activo')}")
-                    
-                    vms = detalles.get('vms', [])
-                    if vms:
-                        print(f"\n{Colors.YELLOW}  Máquinas Virtuales ({len(vms)}):{Colors.ENDC}")
-                        for vm in vms:
-                            print(f"\n  {Colors.CYAN}• {vm['nombre']}{Colors.ENDC}")
-                            print(f"    IP: {vm.get('ip', 'N/A')}")
-                            print(f"    VNC: {vm.get('puerto_vnc', 'N/A')}")
-                            print(f"    Estado: {vm.get('estado', 'N/A')}")
-                    else:
-                        print(f"\n{Colors.YELLOW}  No hay VMs asociadas{Colors.ENDC}")
+                print(f"\n{Colors.YELLOW}  Información General:{Colors.ENDC}")
+                print(f"  • ID: {slice_seleccionado.get('id', 'local')}")
+                print(f"  • VLAN: {Colors.GREEN}{slice_seleccionado.get('vlan', 'N/A')}{Colors.ENDC}")
+                print(f"  • Topología: {slice_seleccionado.get('topologia', 'N/A')}")
+                print(f"  • Estado: {slice_seleccionado.get('estado', 'activo')}")
+                
+                vms = slice_seleccionado.get('vms', [])
+                if vms:
+                    print(f"\n{Colors.YELLOW}  Máquinas Virtuales ({len(vms)}):{Colors.ENDC}")
+                    for vm in vms:
+                        nombre_vm = vm.get('nombre', vm.get('tipo', 'VM'))
+                        print(f"\n  {Colors.CYAN}• {nombre_vm}{Colors.ENDC}")
+                        print(f"    Tipo: {vm.get('tipo', 'N/A')}")
+                        print(f"    Flavor: {vm.get('flavor', 'N/A')}")
+                        print(f"    IP: {vm.get('ip', 'N/A')}")
+                        print(f"    VNC: {vm.get('puerto_vnc', 'N/A')}")
+                        print(f"    Estado: {vm.get('estado', 'activo')}")
                 else:
-                    from shared.ui_helpers import show_error
-                    show_error("No se pudieron cargar los detalles")
+                    print(f"\n{Colors.YELLOW}  No hay VMs asociadas{Colors.ENDC}")
             else:
                 print(f"\n{Colors.RED}  ❌ Opción inválida{Colors.ENDC}")
         
@@ -432,26 +431,24 @@ def _ver_detalles_slice(slice_api, user):
         show_error(f"Error al cargar slices: {str(e)}")
     
     pause()
-    pause()
 
 
-def _editar_slice(slice_api, auth_manager):
+def _editar_slice(auth_manager):
     """Llama a la función de edición de slices desde slice_editor.py"""
     try:
         from roles.cliente.slice_editor import editar_slice
-        editar_slice(slice_api, auth_manager)
+        editar_slice(auth_manager)
     except ImportError as e:
         print(f"\nError importando editor: {e}")
     except Exception as e:
         print(f"\nError al editar slice: {e}")
 
 
-def _eliminar_slice(slice_api, auth_manager):
+def _eliminar_slice(auth_manager):
     """
     Eliminar un slice del usuario
     
     Args:
-        slice_api: Servicio de API de slices
         auth_manager: Gestor de autenticación
     """
     print_header(auth_manager.current_user)
@@ -467,7 +464,7 @@ def _eliminar_slice(slice_api, auth_manager):
     try:
         # Leer slices locales
         import yaml, os
-        BASE_YAML = os.path.join(os.path.dirname(__file__), '..', 'base_de_datos.yaml')
+        BASE_YAML = os.path.join(os.path.dirname(__file__), '..', '..', 'base_de_datos.yaml')
         if os.path.exists(BASE_YAML):
             with open(BASE_YAML, 'r', encoding='utf-8') as f:
                 data = yaml.safe_load(f) or {}

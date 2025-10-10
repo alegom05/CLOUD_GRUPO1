@@ -2,6 +2,7 @@
 
 from shared.ui_helpers import print_header, pause, show_success, show_error, show_info, confirm_action
 from shared.colors import Colors
+from shared.services.flavor_service import select_flavor, get_flavor_specs
 import yaml
 import json
 import os
@@ -144,28 +145,9 @@ def agregar_vms_a_slice(slice_seleccionado, data, VMS_JSON, BASE_YAML):
             num_vm = num_vms_actuales + i + 1
             print(f"\n{Colors.YELLOW}  --- Configuración VM {num_vm} ---{Colors.ENDC}")
             
-            # CPU
-            cpu = input(f"  CPU (1-8 cores) [default: 1]: ").strip() or "1"
-            cpu = int(cpu)
-            
-            # Memoria
-            memory = input(f"  Memoria RAM en MB (512-16384) [default: 512]: ").strip() or "512"
-            memory = int(memory)
-            
-            # Disco
-            disk = input(f"  Disco en GB (10-100) [default: 20]: ").strip() or "20"
-            disk = int(disk)
-            
-            # Flavor
-            print(f"\n  Flavors disponibles:")
-            print(f"    1. tiny   (1 CPU, 512 MB)")
-            print(f"    2. small  (1 CPU, 2 GB)")
-            print(f"    3. medium (2 CPU, 4 GB)")
-            print(f"    4. large  (4 CPU, 8 GB)")
-            print(f"    5. xlarge (8 CPU, 16 GB)")
-            flavor_choice = input(f"  Flavor [1-5, default: 1]: ").strip() or "1"
-            flavors = {1: 'tiny', 2: 'small', 3: 'medium', 4: 'large', 5: 'xlarge'}
-            flavor = flavors.get(int(flavor_choice), 'tiny')
+            # Seleccionar flavor
+            flavor = select_flavor()
+            specs = get_flavor_specs(flavor)
             
             # Crear VM
             ip = f"10.7.{vlan}.{num_vm+1}"
@@ -173,9 +155,9 @@ def agregar_vms_a_slice(slice_seleccionado, data, VMS_JSON, BASE_YAML):
             
             vm = {
                 'nombre': f"vm{num_vm}",
-                'cpu': cpu,
-                'disk': disk,
-                'memory': memory,
+                'cpu': specs['cpu'],
+                'disk': specs['disk'],
+                'memory': specs['memory'],
                 'flavor': flavor,
                 'ip': ip,
                 'puerto_vnc': puerto_vnc,

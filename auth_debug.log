@@ -604,3 +604,198 @@
 [DEBUG] ✅ Login exitoso
 [DEBUG] Usuario: Maria
 [DEBUG] Rol final: cliente
+[IMPORT] auth_api_service.py importado
+[DEBUG] API URL configurada: https://localhost:8443/auth
+[LOGIN] INICIO método login para: maria.garcia@email.com
+[DEBUG] URL: https://localhost:8443/auth/login
+[DEBUG] Intentando login con: maria.garcia@email.com
+[LOGIN] Entrando a login con correo: maria.garcia@email.com
+[ERROR] No se puede conectar con la API: HTTPSConnectionPool(host='localhost', port=8443): Max retries exceeded with url: /auth/login (Caused by NewConnectionError('<urllib3.connection.HTTPSConnection object at 0x000001834981C150>: Failed to establish a new connection: [WinError 10061] No connection could be made because the target machine actively refused it'))
+[INFO] ¿Está el túnel SSH activo?
+[IMPORT] auth_api_service.py importado
+[DEBUG] API URL configurada: https://localhost:8443/auth
+[IMPORT] auth_api_service.py importado
+[DEBUG] API URL configurada: https://localhost:8443/auth
+[LOGIN] INICIO método login para: maria.garcia@email.com
+[DEBUG] URL: https://localhost:8443/auth/login
+[DEBUG] Intentando login con: maria.garcia@email.com
+[LOGIN] Entrando a login con correo: maria.garcia@email.com
+[DEBUG] Status Code: 200
+[DEBUG] Respuesta: {"message":"Autenticación exitosa","token":"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6Miwibm9tYnJlX2NvbXBsZXRvIjoiTWFyaWEgR2FyY2lhIiwiY29ycmVvIjoibWFyaWEuZ2FyY2lhQGVtYWlsLmNvbSIsInJvbCI6ImNsaWVudGUiLCJleHAiOjE3NjAwNzQ3NjgsImlhdCI6MTc2MDA3MTE2OH0.zvTF1BTXNE8567YHZhOGBT-vVwqDrsWqliTE5B60gzw","user_info":{"id":2,"nombre":"Maria","apellidos":"Garcia","correo":"maria.garcia@email.com","rol":"cliente"}}
+[DEBUG] API Role recibido: 'cliente'
+[DEBUG] Role mapeado: 'cliente'
+[DEBUG] ✅ Login exitoso
+[DEBUG] Usuario: Maria
+[DEBUG] Rol final: cliente
+[DEBUG] Cerrando sesión...
+[IMPORT] auth_api_service.py importado
+[DEBUG] API URL configurada: https://localhost:8443/auth
+[LOGIN] INICIO método login para: maria.garcia@email.com
+[DEBUG] URL: https://localhost:8443/auth/login
+[DEBUG] Intentando login con: maria.garcia@email.com
+[LOGIN] Entrando a login con correo: maria.garcia@email.com
+[DEBUG] Status Code: 200
+[DEBUG] Respuesta: {"message":"Autenticación exitosa","token":"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6Miwibm9tYnJlX2NvbXBsZXRvIjoiTWFyaWEgR2FyY2lhIiwiY29ycmVvIjoibWFyaWEuZ2FyY2lhQGVtYWlsLmNvbSIsInJvbCI6ImNsaWVudGUiLCJleHAiOjE3NjAwNzU4MjMsImlhdCI6MTc2MDA3MjIyM30.Ls37V2mhgaGrcfPoqZt3H61sv04Kewe5ZgKSTS-P9Ig","user_info":{"id":2,"nombre":"Maria","apellidos":"Garcia","correo":"maria.garcia@email.com","rol":"cliente"}}
+[DEBUG] API Role recibido: 'cliente'
+[DEBUG] Role mapeado: 'cliente'
+[DEBUG] ✅ Login exitoso
+[DEBUG] Usuario: Maria
+[DEBUG] Rol final: cliente
+[DEBUG] Cerrando sesión...
+[LOGIN] INICIO método login para: rodrigolujanf28@gmail.com
+[DEBUG] URL: https://localhost:8443/auth/login
+[DEBUG] Intentando login con: rodrigolujanf28@gmail.com
+[LOGIN] Entrando a login con correo: rodrigolujanf28@gmail.com
+[DEBUG] Status Code: 200
+[DEBUG] Respuesta: {"message":"Autenticación exitosa","token":"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6MSwibm9tYnJlX2NvbXBsZXRvIjoiQW5kcmVzIEx1amFuIiwiY29ycmVvIjoicm9kcmlnb2x1amFuZjI4QGdtYWlsLmNvbSIsInJvbCI6ImFkbWluIiwiZXhwIjoxNzYwMDc1ODQ5LCJpYXQiOjE3NjAwNzIyNDl9.3Yvk_tp7toU2w-gLmiYWhD4z51lU6fgkYiI1Ct_iXFU","user_info":{"id":1,"nombre":"Andres","apellidos":"Lujan","correo":"rodrigolujanf28@gmail.com","rol":"admin"}}
+[DEBUG] API Role recibido: 'admin'
+[DEBUG] Role mapeado: 'admin'
+[DEBUG] ✅ Login exitoso
+[DEBUG] Usuario: Andres
+[DEBUG] Rol final: admin
+[DEBUG] Cerrando sesión...
+[LOGIN] INICIO método login para: maria.garcia@email.com
+[DEBUG] URL: https://localhost:8443/auth/login
+[DEBUG] Intentando login con: maria.garcia@email.com
+[LOGIN] Entrando a login con correo: maria.garcia@email.com
+[DEBUG] Status Code: 200
+[DEBUG] Respuesta: {"message":"Autenticación exitosa","token":"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6Miwibm9tYnJlX2NvbXBsZXRvIjoiTWFyaWEgR2FyY2lhIiwiY29ycmVvIjoibWFyaWEuZ2FyY2lhQGVtYWlsLmNvbSIsInJvbCI6ImNsaWVudGUiLCJleHAiOjE3NjAwNzU4ODIsImlhdCI6MTc2MDA3MjI4Mn0.BNUW9ghNnPwPQavvavvQpgyX6gxRnZtea5fUZLjxTCA","user_info":{"id":2,"nombre":"Maria","apellidos":"Garcia","correo":"maria.garcia@email.com","rol":"cliente"}}
+[DEBUG] API Role recibido: 'cliente'
+[DEBUG] Role mapeado: 'cliente'
+[DEBUG] ✅ Login exitoso
+[DEBUG] Usuario: Maria
+[DEBUG] Rol final: cliente
+[DEBUG] Cerrando sesión...
+[IMPORT] auth_api_service.py importado
+[DEBUG] API URL configurada: https://localhost:8443/auth
+[LOGIN] INICIO método login para: maria.garcia@email.com
+[DEBUG] URL: https://localhost:8443/auth/login
+[DEBUG] Intentando login con: maria.garcia@email.com
+[LOGIN] Entrando a login con correo: maria.garcia@email.com
+[DEBUG] Status Code: 200
+[DEBUG] Respuesta: {"message":"Autenticación exitosa","token":"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6Miwibm9tYnJlX2NvbXBsZXRvIjoiTWFyaWEgR2FyY2lhIiwiY29ycmVvIjoibWFyaWEuZ2FyY2lhQGVtYWlsLmNvbSIsInJvbCI6ImNsaWVudGUiLCJleHAiOjE3NjAwNzc1NDYsImlhdCI6MTc2MDA3Mzk0Nn0.GCVE256pYP1HdvFfCON_j_fNkffnKluH-ToRv0AWOYA","user_info":{"id":2,"nombre":"Maria","apellidos":"Garcia","correo":"maria.garcia@email.com","rol":"cliente"}}
+[DEBUG] API Role recibido: 'cliente'
+[DEBUG] Role mapeado: 'cliente'
+[DEBUG] ✅ Login exitoso
+[DEBUG] Usuario: Maria
+[DEBUG] Rol final: cliente
+[IMPORT] auth_api_service.py importado
+[DEBUG] API URL configurada: https://localhost:8443/auth
+[LOGIN] INICIO método login para: maria.garcia@email.com
+[DEBUG] URL: https://localhost:8443/auth/login
+[DEBUG] Intentando login con: maria.garcia@email.com
+[LOGIN] Entrando a login con correo: maria.garcia@email.com
+[DEBUG] Status Code: 200
+[DEBUG] Respuesta: {"message":"Autenticación exitosa","token":"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6Miwibm9tYnJlX2NvbXBsZXRvIjoiTWFyaWEgR2FyY2lhIiwiY29ycmVvIjoibWFyaWEuZ2FyY2lhQGVtYWlsLmNvbSIsInJvbCI6ImNsaWVudGUiLCJleHAiOjE3NjAwNzc3OTgsImlhdCI6MTc2MDA3NDE5OH0.GhRG-bMNym6EeIp6X0u4cy0-zsr6Nt9DPN9GvHHzFuo","user_info":{"id":2,"nombre":"Maria","apellidos":"Garcia","correo":"maria.garcia@email.com","rol":"cliente"}}
+[DEBUG] API Role recibido: 'cliente'
+[DEBUG] Role mapeado: 'cliente'
+[DEBUG] ✅ Login exitoso
+[DEBUG] Usuario: Maria
+[DEBUG] Rol final: cliente
+[IMPORT] auth_api_service.py importado
+[DEBUG] API URL configurada: https://localhost:8443/auth
+[LOGIN] INICIO método login para: aria.garcia@email.com
+[DEBUG] URL: https://localhost:8443/auth/login
+[DEBUG] Intentando login con: aria.garcia@email.com
+[LOGIN] Entrando a login con correo: aria.garcia@email.com
+[DEBUG] Status Code: 401
+[DEBUG] Respuesta: {"detail":"Credenciales inválidas"}
+[DEBUG] ❌ Login falló con status code: 401
+[DEBUG] Respuesta: {"detail":"Credenciales inválidas"}
+[LOGIN] INICIO método login para: maria.garcia@email.com
+[DEBUG] URL: https://localhost:8443/auth/login
+[DEBUG] Intentando login con: maria.garcia@email.com
+[LOGIN] Entrando a login con correo: maria.garcia@email.com
+[DEBUG] Status Code: 200
+[DEBUG] Respuesta: {"message":"Autenticación exitosa","token":"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6Miwibm9tYnJlX2NvbXBsZXRvIjoiTWFyaWEgR2FyY2lhIiwiY29ycmVvIjoibWFyaWEuZ2FyY2lhQGVtYWlsLmNvbSIsInJvbCI6ImNsaWVudGUiLCJleHAiOjE3NjAwODAzNzUsImlhdCI6MTc2MDA3Njc3NX0.FmN_FARku70QwNb65HCRmwbbnruDSZTiCiJPvkYr8dg","user_info":{"id":2,"nombre":"Maria","apellidos":"Garcia","correo":"maria.garcia@email.com","rol":"cliente"}}
+[DEBUG] API Role recibido: 'cliente'
+[DEBUG] Role mapeado: 'cliente'
+[DEBUG] ✅ Login exitoso
+[DEBUG] Usuario: Maria
+[DEBUG] Rol final: cliente
+[DEBUG] Cerrando sesión...
+[IMPORT] auth_api_service.py importado
+[DEBUG] API URL configurada: https://localhost:8443/auth
+[LOGIN] INICIO método login para: maria.garcia@email.com
+[DEBUG] URL: https://localhost:8443/auth/login
+[DEBUG] Intentando login con: maria.garcia@email.com
+[LOGIN] Entrando a login con correo: maria.garcia@email.com
+[DEBUG] Status Code: 200
+[DEBUG] Respuesta: {"message":"Autenticación exitosa","token":"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6Miwibm9tYnJlX2NvbXBsZXRvIjoiTWFyaWEgR2FyY2lhIiwiY29ycmVvIjoibWFyaWEuZ2FyY2lhQGVtYWlsLmNvbSIsInJvbCI6ImNsaWVudGUiLCJleHAiOjE3NjAwODE2ODgsImlhdCI6MTc2MDA3ODA4OH0.jc8nlOg-5fLi4_-EvEruARnO7DuV1uUENSQVYNn7kGk","user_info":{"id":2,"nombre":"Maria","apellidos":"Garcia","correo":"maria.garcia@email.com","rol":"cliente"}}
+[DEBUG] API Role recibido: 'cliente'
+[DEBUG] Role mapeado: 'cliente'
+[DEBUG] ✅ Login exitoso
+[DEBUG] Usuario: Maria
+[DEBUG] Rol final: cliente
+[IMPORT] auth_api_service.py importado
+[DEBUG] API URL configurada: https://localhost:8443/auth
+[ERROR] No se ha proporcionado un token.
+[DEBUG] Cerrando sesión...
+[ERROR] No se ha proporcionado un token.
+[DEBUG] Cerrando sesión...
+[IMPORT] auth_api_service.py importado
+[DEBUG] API URL configurada: https://localhost:8443/auth
+[LOGIN] INICIO método login para: maria.garcia@email.com
+[DEBUG] URL: https://localhost:8443/auth/login
+[DEBUG] Intentando login con: maria.garcia@email.com
+[LOGIN] Entrando a login con correo: maria.garcia@email.com
+[DEBUG] Status Code: 200
+[DEBUG] Respuesta: {"message":"Autenticación exitosa","token":"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6Miwibm9tYnJlX2NvbXBsZXRvIjoiTWFyaWEgR2FyY2lhIiwiY29ycmVvIjoibWFyaWEuZ2FyY2lhQGVtYWlsLmNvbSIsInJvbCI6ImNsaWVudGUiLCJleHAiOjE3NjAwODMzMzgsImlhdCI6MTc2MDA3OTczOH0.-AAlryskjUEIfoOBfBWV4pbtosf-1RTNbR_OSG4sXis","user_info":{"id":2,"nombre":"Maria","apellidos":"Garcia","correo":"maria.garcia@email.com","rol":"cliente"}}
+[DEBUG] API Role recibido: 'cliente'
+[DEBUG] Role mapeado: 'cliente'
+[DEBUG] ✅ Login exitoso
+[DEBUG] Usuario: Maria
+[DEBUG] Rol final: cliente
+[DEBUG] Cerrando sesión...
+[LOGIN] INICIO método login para: rodrigolujanf28@gmail.com
+[DEBUG] URL: https://localhost:8443/auth/login
+[DEBUG] Intentando login con: rodrigolujanf28@gmail.com
+[LOGIN] Entrando a login con correo: rodrigolujanf28@gmail.com
+[DEBUG] Status Code: 200
+[DEBUG] Respuesta: {"message":"Autenticación exitosa","token":"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6MSwibm9tYnJlX2NvbXBsZXRvIjoiQW5kcmVzIEx1amFuIiwiY29ycmVvIjoicm9kcmlnb2x1amFuZjI4QGdtYWlsLmNvbSIsInJvbCI6ImFkbWluIiwiZXhwIjoxNzYwMDgzNTI4LCJpYXQiOjE3NjAwNzk5Mjh9.OAhZ9cRTuuhtUIEyqOMjiNEIWyFZgXCB3i1e5dr1tP0","user_info":{"id":1,"nombre":"Andres","apellidos":"Lujan","correo":"rodrigolujanf28@gmail.com","rol":"admin"}}
+[DEBUG] API Role recibido: 'admin'
+[DEBUG] Role mapeado: 'admin'
+[DEBUG] ✅ Login exitoso
+[DEBUG] Usuario: Andres
+[DEBUG] Rol final: admin
+[DEBUG] Cerrando sesión...
+[LOGIN] INICIO método login para: maria.garcia@email.com
+[DEBUG] URL: https://localhost:8443/auth/login
+[DEBUG] Intentando login con: maria.garcia@email.com
+[LOGIN] Entrando a login con correo: maria.garcia@email.com
+[DEBUG] Status Code: 200
+[DEBUG] Respuesta: {"message":"Autenticación exitosa","token":"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6Miwibm9tYnJlX2NvbXBsZXRvIjoiTWFyaWEgR2FyY2lhIiwiY29ycmVvIjoibWFyaWEuZ2FyY2lhQGVtYWlsLmNvbSIsInJvbCI6ImNsaWVudGUiLCJleHAiOjE3NjAwODM1NzEsImlhdCI6MTc2MDA3OTk3MX0.t-0DkRxafYYDPQqQvjBGyBnRgsZGeJphUgi-BzCWxok","user_info":{"id":2,"nombre":"Maria","apellidos":"Garcia","correo":"maria.garcia@email.com","rol":"cliente"}}
+[DEBUG] API Role recibido: 'cliente'
+[DEBUG] Role mapeado: 'cliente'
+[DEBUG] ✅ Login exitoso
+[DEBUG] Usuario: Maria
+[DEBUG] Rol final: cliente
+[DEBUG] Cerrando sesión...
+[IMPORT] auth_api_service.py importado
+[DEBUG] API URL configurada: https://localhost:8443/auth
+[IMPORT] auth_api_service.py importado
+[DEBUG] API URL configurada: https://localhost:8443/auth
+[LOGIN] INICIO método login para: maria.garcia@email.com
+[DEBUG] URL: https://localhost:8443/auth/login
+[DEBUG] Intentando login con: maria.garcia@email.com
+[LOGIN] Entrando a login con correo: maria.garcia@email.com
+[DEBUG] Status Code: 200
+[DEBUG] Respuesta: {"message":"Autenticación exitosa","token":"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6Miwibm9tYnJlX2NvbXBsZXRvIjoiTWFyaWEgR2FyY2lhIiwiY29ycmVvIjoibWFyaWEuZ2FyY2lhQGVtYWlsLmNvbSIsInJvbCI6ImNsaWVudGUiLCJleHAiOjE3NjAwODQwMTMsImlhdCI6MTc2MDA4MDQxM30.UekOzlzjHEQ7TXWPRyMVuWCaFSRoav9hsyicd6vjrp8","user_info":{"id":2,"nombre":"Maria","apellidos":"Garcia","correo":"maria.garcia@email.com","rol":"cliente"}}
+[DEBUG] API Role recibido: 'cliente'
+[DEBUG] Role mapeado: 'cliente'
+[DEBUG] ✅ Login exitoso
+[DEBUG] Usuario: Maria
+[DEBUG] Rol final: cliente
+[DEBUG] Cerrando sesión...
+[LOGIN] INICIO método login para: carlos.rodriguez@empresa.com
+[DEBUG] URL: https://localhost:8443/auth/login
+[DEBUG] Intentando login con: carlos.rodriguez@empresa.com
+[LOGIN] Entrando a login con correo: carlos.rodriguez@empresa.com
+[DEBUG] Status Code: 200
+[DEBUG] Respuesta: {"message":"Autenticación exitosa","token":"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6Mywibm9tYnJlX2NvbXBsZXRvIjoiQ2FybG9zIFJvZHJpZ3VleiIsImNvcnJlbyI6ImNhcmxvcy5yb2RyaWd1ZXpAZW1wcmVzYS5jb20iLCJyb2wiOiJ1c3VhcmlvX2F2YW56YWRvIiwiZXhwIjoxNzYwMDg0MDQxLCJpYXQiOjE3NjAwODA0NDF9.Piw77qIs2rLOtrDcD7bMuguDkKZFvBMcDAiHGq9RkwM","user_info":{"id":3,"nombre":"Carlos","apellidos":"Rodriguez","correo":"carlos.rodriguez@empresa.com","rol":"usuario_avanzado"}}
+[DEBUG] API Role recibido: 'usuario_avanzado'
+[DEBUG] Role mapeado: 'usuario_avanzado'
+[DEBUG] ✅ Login exitoso
+[DEBUG] Usuario: Carlos
+[DEBUG] Rol final: usuario_avanzado
+[DEBUG] Cerrando sesión...

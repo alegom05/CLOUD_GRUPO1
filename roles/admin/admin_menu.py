@@ -60,11 +60,12 @@ def admin_menu(auth_manager, slice_manager, auth_service=None):
 
         print(Colors.YELLOW + "\n  Gestión de Slices:" + Colors.ENDC)
         print("  1. Listar Slices")
-        print("  2. Crear Slice")
-        print("  3. Editar Slice")
-        print("  4. Eliminar Slice")
-        print("  5. Servicio de Monitoreo")
-        print("  6. Ver Logs")
+        print("  2. Ver Detalles de Slice")
+        print("  3. Crear Slice")
+        print("  4. Editar Slice")
+        print("  5. Eliminar Slice")
+        print("  6. Servicio de Monitoreo")
+        print("  7. Ver Logs")
         print(Colors.RED + "\n  0. Cerrar Sesión" + Colors.ENDC)
 
         choice = input("\nSeleccione opción: ")
@@ -72,14 +73,16 @@ def admin_menu(auth_manager, slice_manager, auth_service=None):
         if choice == '1':
             _ver_todos_slices(slice_api, auth_manager)
         elif choice == '2':
-            _crear_slice_admin(slice_api, auth_manager)
+            _ver_detalles_slice(slice_api, auth_manager)
         elif choice == '3':
-            _editar_slice_admin(slice_api, auth_manager)
+            _crear_slice_admin(slice_api, auth_manager)
         elif choice == '4':
-            _eliminar_slice_admin(slice_api, auth_manager)
+            _editar_slice_admin(slice_api, auth_manager)
         elif choice == '5':
-            _servicio_monitoreo()
+            _eliminar_slice_admin(slice_api, auth_manager)
         elif choice == '6':
+            _servicio_monitoreo()
+        elif choice == '7':
             _ver_logs(auth_manager)
         elif choice == '0':
             _cerrar_sesion(auth_manager, auth_service)
@@ -231,27 +234,31 @@ def _crear_slice_admin(slice_api, auth_manager):
         nombre, topologia, vms_data = builder.start()
         
         if nombre and topologia and vms_data:
-            try:
-                print(f"\n{Colors.CYAN}⏳ Creando slice en la API...{Colors.ENDC}")
-                resultado = slice_api.create_slice(nombre, topologia, vms_data)
-                if resultado:
-                    from shared.ui_helpers import show_success
-                    vlan = resultado.get('vlan', 'N/A')
-                    slice_id = resultado.get('id', 'N/A')
-                    show_success(f"Slice creado exitosamente")
-                    print(f"\n{Colors.GREEN}  Detalles del Slice:{Colors.ENDC}")
-                    print(f"  • ID: {slice_id}")
-                    print(f"  • VLAN: {vlan}")
-                    print(f"  • Nombre: {nombre}")
-                    print(f"  • Topología: {topologia}")
-                    print(f"  • VMs: {len(vms_data)}")
-                else:
-                    raise Exception("API no respondió correctamente")
-            except Exception:
-                # Ocultar logs de error de API, solo mostrar mensaje de guardado local
-                vlan = 'local'
-                slice_id = 'local'
-                print(f"{Colors.YELLOW}No se pudo conectar con la API. El slice y las VMs se guardarán localmente...{Colors.ENDC}")
+            # DESHABILITADO: Crear slice en API
+            # try:
+            #     print(f"\n{Colors.CYAN}⏳ Creando slice en la API...{Colors.ENDC}")
+            #     resultado = slice_api.create_slice(nombre, topologia, vms_data)
+            #     if resultado:
+            #         from shared.ui_helpers import show_success
+            #         vlan = resultado.get('vlan', 'N/A')
+            #         slice_id = resultado.get('id', 'N/A')
+            #         show_success(f"Slice creado exitosamente")
+            #         print(f"\n{Colors.GREEN}  Detalles del Slice:{Colors.ENDC}")
+            #         print(f"  • ID: {slice_id}")
+            #         print(f"  • VLAN: {vlan}")
+            #         print(f"  • Nombre: {nombre}")
+            #         print(f"  • Topología: {topologia}")
+            #         print(f"  • VMs: {len(vms_data)}")
+            #     else:
+            #         raise Exception("API no respondió correctamente")
+            # except Exception:
+            #     # Ocultar logs de error de API, solo mostrar mensaje de guardado local
+            
+            # Trabajar solo con archivos locales
+            vlan = 'local'
+            slice_id = 'local'
+            print(f"{Colors.CYAN}📁 Guardando slice localmente...{Colors.ENDC}")
+            
             # Guardar slice y VMs en archivos SIEMPRE
             try:
                 from shared.data_store import guardar_slice, guardar_vms
