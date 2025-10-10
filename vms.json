@@ -15,6 +15,66 @@
       "memory": 2048,
       "disk": 20,
       "usuario": "maria.garcia@email.com"
+    },
+    {
+      "nombre": "vm1",
+      "flavor": "small",
+      "cpu": 1,
+      "memory": 2048,
+      "disk": 20,
+      "usuario": "rodrigolujanf28@gmail.com",
+      "ip": "10.7.5.2",
+      "puerto_vnc": 5903
+    },
+    {
+      "nombre": "vm2",
+      "flavor": "small",
+      "cpu": 1,
+      "memory": 2048,
+      "disk": 20,
+      "usuario": "rodrigolujanf28@gmail.com",
+      "ip": "10.7.5.3",
+      "puerto_vnc": 5904
+    },
+    {
+      "nombre": "vm3",
+      "flavor": "small",
+      "cpu": 1,
+      "memory": 2048,
+      "disk": 20,
+      "usuario": "rodrigolujanf28@gmail.com",
+      "ip": "10.7.5.4",
+      "puerto_vnc": 5905
+    },
+    {
+      "nombre": "vm1",
+      "flavor": "tiny",
+      "cpu": 1,
+      "memory": 512,
+      "disk": 1,
+      "usuario": "rodrigolujanf28@gmail.com",
+      "ip": "10.7.6.2",
+      "puerto_vnc": 5906
+    },
+    {
+      "nombre": "vm2",
+      "flavor": "small",
+      "cpu": 1,
+      "memory": 2048,
+      "disk": 20,
+      "usuario": "rodrigolujanf28@gmail.com",
+      "ip": "10.7.6.3",
+      "puerto_vnc": 5907
+    },
+    {
+      "nombre": "vm3",
+      "flavor": "medium",
+      "cpu": 2,
+      "memory": 4096,
+      "disk": 40,
+      "usuario": "rodrigolujanf28@gmail.com",
+      "ip": "10.7.6.4",
+      "puerto_vnc": 5908
     }
   ]
 }

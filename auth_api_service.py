@@ -94,6 +94,11 @@ class AuthAPIService:
                 print(f"[DEBUG] Rol final: {self.user_role}")
                 log_debug(f"[DEBUG] Rol final: {self.user_role}")
                 return True
+            else:
+                print("[ERROR] ❌ El logueo no fue correcto, verifique su usuario y contraseña.")
+                input("[INFO] Presione Enter para intentar nuevamente o Ctrl+C para salir...")
+                return False
+
             print(f"[DEBUG] ❌ Login falló con status code: {response.status_code}")
             log_debug(f"[DEBUG] ❌ Login falló con status code: {response.status_code}")
             print(f"[DEBUG] Respuesta: {response.text}")
