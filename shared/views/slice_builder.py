@@ -188,18 +188,17 @@ class SliceBuilder:
             except ValueError:
                 show_error("Debe ingresar un número válido.")
 
-        # Crear VMs con distintos flavors
+        # Solicitar flavor para todas las VMs de esta topología
+        print(f"\n  Flavor para las {num_vms} VMs de {topo_tipo}:")
+        flavor = select_flavor()
+        specs = get_flavor_specs(flavor)
+
+        # Crear VMs
         inicio_vm = len(self.vms) + 1
         vms_indices = []
 
         for i in range(num_vms):
             num_vm = inicio_vm + i
-            print(f"\n  Seleccionando flavor para la VM {num_vm}:")
-            
-            # Seleccionar flavor para cada VM de manera individual
-            flavor = select_flavor()
-            specs = get_flavor_specs(flavor)
-
             vm_data = {
                 "nombre": f"vm{num_vm}",
                 "flavor": flavor,
@@ -209,8 +208,6 @@ class SliceBuilder:
             }
             self.vms.append(vm_data)
             vms_indices.append(len(self.vms) - 1)
-
-            show_success(f"VM{num_vm} agregada ({flavor})")
 
         # Guardar topología
         self.topologias.append({
@@ -223,7 +220,6 @@ class SliceBuilder:
         self._crear_enlaces_automaticos(topo_tipo, vms_indices)
 
         show_success(f"Topología {topo_tipo} con {num_vms} VMs agregada")
-
     
     def _crear_enlaces_automaticos(self, tipo: str, vms_indices: List[int]):
         """Crea enlaces automáticos según el tipo de topología"""
