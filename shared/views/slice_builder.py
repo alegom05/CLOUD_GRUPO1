@@ -45,7 +45,7 @@ class SliceBuilder:
             
             # Menú de opciones
             print(Colors.YELLOW + "\n  Opciones:" + Colors.ENDC)
-            print("  1. Agregar Topologías")
+            print("  1. Agregar Topologías Definidas")
             print("  2. Agregar Topologías Mixtas")
             print("  3. Agregar Enlaces")
             print("  4. Ver Resumen")
