@@ -45,21 +45,24 @@ class SliceBuilder:
             
             # Menú de opciones
             print(Colors.YELLOW + "\n  Opciones:" + Colors.ENDC)
-            print("  1. Agregar Nodos y/o Topologías")
-            print("  2. Agregar Enlaces")
-            print("  3. Ver Resumen")
-            print(Colors.GREEN + "  4. Finalizar y Crear Slice" + Colors.ENDC)
+            print("  1. Agregar Topologías")
+            print("  2. Agregar Topologías Mixtas")
+            print("  3. Agregar Enlaces")
+            print("  4. Ver Resumen")
+            print(Colors.GREEN + "  5. Finalizar y Crear Slice" + Colors.ENDC)
             print(Colors.RED + "  0. Cancelar" + Colors.ENDC)
             
             choice = input("\n  Seleccione opción: ")
             
             if choice == '1':
-                self._agregar_nodos()
+                self._agregar_topologia() # Falta
             elif choice == '2':
-                self._agregar_enlaces()
+                self._agregar_nodos()
             elif choice == '3':
-                self._mostrar_resumen_detallado()
+                self._agregar_enlaces()
             elif choice == '4':
+                self._mostrar_resumen_detallado()
+            elif choice == '5':
                 if self._validar_configuracion():
                     return self._generar_datos_slice()
                 else:
@@ -100,6 +103,25 @@ class SliceBuilder:
             print("\nOperación cancelada. Regresando al menú principal...")
             return
         if modo == '2':
+            self._agregar_topologia_con_vms()
+        else:
+            self._agregar_vms_individuales()
+
+    def _agregar_topologia(self):
+        """Agregar topología"""
+        print_header(self.user)
+        print(Colors.BOLD + "\n  AGREGAR NODOS (VMs)" + Colors.ENDC)
+        print("  " + "="*50)
+        
+        # Preguntar si quiere agregar una topología completa o VMs individuales
+        print("\n  ¿Cómo desea agregar VMs?")
+        print("  1. Agregar topología completa (configura VMs automáticamente)")
+        
+        modo = input("\n  Seleccione (0 para cancelar): ")
+        if modo == '0':
+            print("\nOperación cancelada. Regresando al menú principal...")
+            return
+        if modo == '1':
             self._agregar_topologia_con_vms()
         else:
             self._agregar_vms_individuales()
@@ -166,17 +188,18 @@ class SliceBuilder:
             except ValueError:
                 show_error("Debe ingresar un número válido.")
 
-        # Solicitar flavor para todas las VMs de esta topología
-        print(f"\n  Flavor para las {num_vms} VMs de {topo_tipo}:")
-        flavor = select_flavor()
-        specs = get_flavor_specs(flavor)
-
-        # Crear VMs
+        # Crear VMs con distintos flavors
         inicio_vm = len(self.vms) + 1
         vms_indices = []
 
         for i in range(num_vms):
             num_vm = inicio_vm + i
+            print(f"\n  Seleccionando flavor para la VM {num_vm}:")
+            
+            # Seleccionar flavor para cada VM de manera individual
+            flavor = select_flavor()
+            specs = get_flavor_specs(flavor)
+
             vm_data = {
                 "nombre": f"vm{num_vm}",
                 "flavor": flavor,
@@ -186,6 +209,8 @@ class SliceBuilder:
             }
             self.vms.append(vm_data)
             vms_indices.append(len(self.vms) - 1)
+
+            show_success(f"VM{num_vm} agregada ({flavor})")
 
         # Guardar topología
         self.topologias.append({
@@ -198,6 +223,7 @@ class SliceBuilder:
         self._crear_enlaces_automaticos(topo_tipo, vms_indices)
 
         show_success(f"Topología {topo_tipo} con {num_vms} VMs agregada")
+
     
     def _crear_enlaces_automaticos(self, tipo: str, vms_indices: List[int]):
         """Crea enlaces automáticos según el tipo de topología"""

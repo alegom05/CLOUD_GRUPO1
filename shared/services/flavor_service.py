@@ -33,11 +33,11 @@ def select_flavor() -> str:
         Nombre del flavor seleccionado
     """
     print("\n  Flavors disponibles:")
-    print("  1. Tiny   (1 vCPU, 512MB RAM, 1GB Disk)")
-    print("  2. Small  (1 vCPU, 2GB RAM, 20GB Disk)")
-    print("  3. Medium (2 vCPU, 4GB RAM, 40GB Disk)")
-    print("  4. Large  (4 vCPU, 8GB RAM, 80GB Disk)")
-    print("  5. XLarge (8 vCPU, 16GB RAM, 160GB Disk)")
+    print("  1. Tiny   (1 vCPU, 512MB RAM, 1GB Disk), Cirros-0.5.1")
+    print("  2. Small  (1 vCPU, 2GB RAM, 20GB Disk), Cirros-0.5.1")
+    print("  3. Medium (2 vCPU, 4GB RAM, 40GB Disk), Cirros-0.5.1")
+    print("  4. Large  (4 vCPU, 8GB RAM, 80GB Disk), Cirros-0.5.1")
+    print("  5. XLarge (8 vCPU, 16GB RAM, 160GB Disk), Cirros-0.5.1")
     
     choice = input("\n  Seleccione flavor (1-5): ")
     

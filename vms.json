@@ -75,6 +75,36 @@
       "usuario": "rodrigolujanf28@gmail.com",
       "ip": "10.7.6.4",
       "puerto_vnc": 5908
+    },
+    {
+      "nombre": "vm1",
+      "flavor": "tiny",
+      "cpu": 1,
+      "memory": 512,
+      "disk": 1,
+      "usuario": "rodrigolujanf28@gmail.com",
+      "ip": "10.7.6.2",
+      "puerto_vnc": 5909
+    },
+    {
+      "nombre": "vm2",
+      "flavor": "small",
+      "cpu": 1,
+      "memory": 2048,
+      "disk": 20,
+      "usuario": "rodrigolujanf28@gmail.com",
+      "ip": "10.7.6.3",
+      "puerto_vnc": 5910
+    },
+    {
+      "nombre": "vm3",
+      "flavor": "medium",
+      "cpu": 2,
+      "memory": 4096,
+      "disk": 40,
+      "usuario": "rodrigolujanf28@gmail.com",
+      "ip": "10.7.6.4",
+      "puerto_vnc": 5911
     }
   ]
 }
