@@ -47,9 +47,8 @@ class SliceBuilder:
             print(Colors.YELLOW + "\n  Opciones:" + Colors.ENDC)
             print("  1. Agregar Topologías Definidas")
             print("  2. Agregar Topologías Mixtas")
-            print("  3. Agregar Enlaces")
-            print("  4. Ver Resumen")
-            print(Colors.GREEN + "  5. Finalizar y Crear Slice" + Colors.ENDC)
+            print("  3. Ver Resumen")
+            print(Colors.GREEN + "  4. Finalizar y Crear Slice" + Colors.ENDC)
             print(Colors.RED + "  0. Cancelar" + Colors.ENDC)
             
             choice = input("\n  Seleccione opción: ")
@@ -59,10 +58,8 @@ class SliceBuilder:
             elif choice == '2':
                 self._agregar_nodos()
             elif choice == '3':
-                self._agregar_enlaces()
-            elif choice == '4':
                 self._mostrar_resumen_detallado()
-            elif choice == '5':
+            elif choice == '4':
                 if self._validar_configuracion():
                     return self._generar_datos_slice()
                 else:
@@ -97,6 +94,8 @@ class SliceBuilder:
         print("\n  ¿Cómo desea agregar VMs?")
         print("  1. Agregar VMs individuales")
         print("  2. Agregar topología completa (configura VMs automáticamente)")
+        print("  3. Agregar enlaces") # Validación, mínimo 1 VM
+
         
         modo = input("\n  Seleccione (0 para cancelar): ")
         if modo == '0':
@@ -104,6 +103,8 @@ class SliceBuilder:
             return
         if modo == '2':
             self._agregar_topologia_con_vms()
+        if modo == '3':
+            self._agregar_enlaces()
         else:
             self._agregar_vms_individuales()
 
@@ -115,7 +116,7 @@ class SliceBuilder:
         
         # Preguntar si quiere agregar una topología completa o VMs individuales
         print("\n  ¿Cómo desea agregar VMs?")
-        print("  1. Agregar topología completa (configura VMs automáticamente)")
+        print("  1. Agregar topología completa (configura VMs por separado)")
         
         modo = input("\n  Seleccione (0 para cancelar): ")
         if modo == '0':
