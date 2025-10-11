@@ -54,7 +54,7 @@ class SliceBuilder:
             choice = input("\n  Seleccione opción: ")
             
             if choice == '1':
-                self._agregar_topologia() # Falta
+                self._agregar_topologia()
             elif choice == '2':
                 self._agregar_nodos()
             elif choice == '3':

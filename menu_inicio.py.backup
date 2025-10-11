@@ -475,7 +475,7 @@ def print_header(user=None):
     """Imprimir encabezado principal"""
     clear_screen()
     print(Colors.BOLD + Colors.BLUE + "="*60 + Colors.ENDC)
-    print(Colors.BOLD + Colors.GREEN + "     BIENVENIDO A PUCP CLOUD ORCHESTRATOR" + Colors.ENDC)
+    print(Colors.BOLD + Colors.GREEN + "BIENVENIDO A PUCP CLOUD ORCHESTRATOR" + Colors.ENDC)
     print(Colors.BOLD + Colors.BLUE + "="*60 + Colors.ENDC)
     if user:
         print(f"  Usuario: {Colors.YELLOW}{user.username}{Colors.ENDC} | Rol: {Colors.GREEN}{user.role.value.upper()}{Colors.ENDC}")

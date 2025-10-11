@@ -403,6 +403,9 @@ def _ver_detalles_slice(user):
                 print(f"  • VLAN: {Colors.GREEN}{slice_seleccionado.get('vlan', 'N/A')}{Colors.ENDC}")
                 print(f"  • Topología: {slice_seleccionado.get('topologia', 'N/A')}")
                 print(f"  • Estado: {slice_seleccionado.get('estado', 'activo')}")
+                print(f"CPU por VM: {s.vms[0].cpu if s.vms else 'N/A'}")
+                print(f"Memoria por VM: {s.vms[0].memory if s.vms else 'N/A'} MB")
+                print(f"Disco por VM: {s.vms[0].disk if s.vms else 'N/A'} GB")
                 
                 vms = slice_seleccionado.get('vms', [])
                 if vms:
