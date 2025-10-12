@@ -1,0 +1,185 @@
+slices:
+- estado: inactivo
+  id: local
+  nombre: slice_1
+  topologia: manual-2VMS
+  usuario: maria.garcia@email.com
+  vlan: local
+  vms:
+  - cpu: 1
+    disk: 1
+    flavor: tiny
+    memory: 512
+    nombre: vm1
+  - cpu: 1
+    disk: 20
+    flavor: small
+    memory: 2048
+    nombre: vm2
+- id: 1
+  nombre: slice_admin
+  topologia: manual-1VMS
+  usuario: rodrigolujanf28@gmail.com
+  vlan: 2
+  vms:
+  - cpu: 1
+    disk: 1
+    flavor: tiny
+    memory: 512
+    nombre: vm1
+- id: 2
+  nombre: slice_test_samantha
+  topologia: manual
+  usuario: maria.garcia@email.com
+  vlan: 3
+  vms:
+  - cpu: 1
+    disk: 1
+    flavor: tiny
+    memory: 512
+    nombre: vm1
+  - cpu: 1
+    disk: 20
+    flavor: small
+    memory: 2048
+    nombre: vm2
+  - cpu: 2
+    disk: 40
+    flavor: medium
+    memory: 4096
+    nombre: vm3
+  - cpu: 2
+    disk: 40
+    flavor: medium
+    memory: 4096
+    nombre: vm4
+  - cpu: 2
+    disk: 40
+    flavor: medium
+    memory: 4096
+    nombre: vm5
+- id: 3
+  nombre: slice_samantha_v2
+  topologia: anillo-3VMS
+  usuario: maria.garcia@email.com
+  vlan: 4
+  vms:
+  - cpu: 1
+    disk: 20
+    flavor: small
+    memory: 2048
+    nombre: vm1
+  - cpu: 1
+    disk: 1
+    flavor: tiny
+    memory: 512
+    nombre: vm2
+  - cpu: 4
+    disk: 80
+    flavor: large
+    memory: 8192
+    nombre: vm3
+  - cpu: 4
+    disk: 80
+    flavor: large
+    memory: 8192
+    nombre: vm4
+  - cpu: 4
+    disk: 80
+    flavor: large
+    memory: 8192
+    nombre: vm5
+- id: 5
+  nombre: Bass
+  topologia: manual-3VMS
+  usuario: rodrigolujanf28@gmail.com
+  vlan: 6
+  vms:
+  - cpu: 1
+    disk: 1
+    flavor: tiny
+    memory: 512
+    nombre: vm1
+  - cpu: 1
+    disk: 20
+    flavor: small
+    memory: 2048
+    nombre: vm2
+  - cpu: 2
+    disk: 40
+    flavor: medium
+    memory: 4096
+    nombre: vm3
+- id: 6
+  nombre: Guitar
+  topologia: manual-3VMS
+  usuario: rodrigolujanf28@gmail.com
+  vlan: 6
+  vms:
+  - cpu: 1
+    disk: 1
+    flavor: tiny
+    memory: 512
+    nombre: vm1
+  - cpu: 1
+    disk: 20
+    flavor: small
+    memory: 2048
+    nombre: vm2
+  - cpu: 2
+    disk: 40
+    flavor: medium
+    memory: 4096
+    nombre: vm3
+- id: 7
+  nombre: TheSlice
+  topologia: manual-2VMS
+  usuario: rodrigolujanf28@gmail.com
+  vlan: 7
+  vms:
+  - cpu: 1
+    disk: 1
+    flavor: tiny
+    memory: 512
+    nombre: vm1
+  - cpu: 1
+    disk: 1
+    flavor: tiny
+    memory: 512
+    nombre: vm2
+- id: 8
+  nombre: samantha_slice_test
+  topologia: lineal-2VMS+anillo-4VMS
+  usuario: maria.garcia@email.com
+  vlan: 8
+  vms:
+  - cpu: 1
+    disk: 1
+    flavor: tiny
+    memory: 512
+    nombre: vm1
+  - cpu: 1
+    disk: 1
+    flavor: tiny
+    memory: 512
+    nombre: vm2
+  - cpu: 1
+    disk: 20
+    flavor: small
+    memory: 2048
+    nombre: vm3
+  - cpu: 2
+    disk: 40
+    flavor: medium
+    memory: 4096
+    nombre: vm4
+  - cpu: 2
+    disk: 40
+    flavor: medium
+    memory: 4096
+    nombre: vm5
+  - cpu: 8
+    disk: 160
+    flavor: xlarge
+    memory: 16384
+    nombre: vm6
