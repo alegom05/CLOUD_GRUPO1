@@ -1,0 +1,79 @@
+{
+  "slices": [
+    {
+      "id": "slice_b266f7727feb",
+      "nombre": "TEST_SALYAA",
+      "topologia": "lineal",
+      "usuario": "maria.garcia@email.com",
+      "estado": "activo",
+      "vlan": 1,
+      "vms": [
+        {
+          "nombre": "vm1",
+          "cpu": 1,
+          "memory": 512,
+          "disk": 1,
+          "flavor": "tiny"
+        },
+        {
+          "nombre": "vm2",
+          "cpu": 1,
+          "memory": 512,
+          "disk": 1,
+          "flavor": "tiny"
+        }
+      ]
+    },
+    {
+      "id": "slice_0b859051641a",
+      "nombre": "slice_ADMIN",
+      "topologia": "lineal",
+      "usuario": "rodrigolujanf28@gmail.com",
+      "estado": "activo",
+      "vlan": 2,
+      "vms": [
+        {
+          "nombre": "vm1",
+          "cpu": 1,
+          "memory": 500,
+          "disk": 1,
+          "flavor": "f1"
+        },
+        {
+          "nombre": "vm2",
+          "cpu": 1,
+          "memory": 500,
+          "disk": 1,
+          "flavor": "f1"
+        }
+      ]
+    },
+    {
+      "id": "slice_3b7357414908",
+      "nombre": "slice_cliente",
+      "topologia": "lineal",
+      "usuario": "maria.garcia@email.com",
+      "estado": "activo",
+      "vlan": 3,
+      "vms": [
+        {
+          "nombre": "vm1",
+          "cpu": 1,
+          "memory": 500,
+          "disk": 1,
+          "flavor": "f1",
+          "conexion_remota": "si"
+        },
+        {
+          "nombre": "vm2",
+          "cpu": 1,
+          "memory": 500,
+          "disk": 1,
+          "flavor": "f1",
+          "conexion_remota": "no"
+        }
+      ],
+      "salida_internet": "si"
+    }
+  ]
+}
