@@ -73,62 +73,35 @@ def admin_menu(auth_manager, slice_manager, auth_service=None):
             # Crear slice como admin usando el mismo flujo y formato que el cliente
             try:
                 builder = SliceBuilder(auth_manager.current_user)
-                nombre, topologia, vms_data, salida_internet = builder.start()
-                if nombre and topologia and vms_data:
-                    print(f"{Colors.CYAN}Guardando slice localmente...{Colors.ENDC}")
-                    import json, os
-                    dbfile = 'base_de_datos.json'
-                    if os.path.exists(dbfile):
-                        with open(dbfile, 'r', encoding='utf-8') as f:
-                            data = json.load(f)
+                datos = builder.start()
+                print(f"[DEBUG] Datos retornados por builder.start(): {datos}")
+                if isinstance(datos, tuple) and len(datos) == 6:
+                    nombre, topologia, vms_data, salida_internet, conexion_topologias, topologias_json = datos
+                    if nombre and topologia and vms_data and topologias_json:
+                        print(f"{Colors.CYAN}Guardando slice localmente...{Colors.ENDC}")
+                        from shared.data_store import guardar_slice
+                        admin_email = auth_manager.get_current_user_email()
+                        slice_obj = {
+                            'nombre': nombre,
+                            'topologia': topologia,
+                            'vms': vms_data,
+                            'salida_internet': salida_internet,
+                            'usuario': admin_email,
+                            'conexión_topologias': conexion_topologias,
+                            'topologias': topologias_json
+                        }
+                        print(f"[DEBUG] Diccionario a guardar: {slice_obj}")
+                        guardar_slice(slice_obj)
+                        print(f"{Colors.GREEN}Slice '{nombre}' creado exitosamente{Colors.ENDC}")
+                        print(f"  • Nombre: {nombre}")
+                        print(f"  • Topología: {topologia}")
+                        print(f"  • VMs: {len(vms_data)}")
+                        pause()
+                        return
                     else:
-                        data = []
-                    # id_slice incremental
-                    if data:
-                        ids = [int(s.get('id_slice')) for s in data if str(s.get('id_slice')).isdigit()]
-                        new_id = str(max(ids) + 1) if ids else "1"
-                    else:
-                        new_id = "1"
-                    cantidad_vms = str(len(vms_data))
-                    vlans_separadas = str(len(data) + 1)
-                    topologia_nombre = topologia.split('-')[0] if '-' in topologia else topologia
-                    topologia_obj = {
-                        "nombre": topologia_nombre,
-                        "cantidad_vms": cantidad_vms,
-                        "internet": salida_internet,
-                        "vms": []
-                    }
-                    for vm in vms_data:
-                        topologia_obj["vms"].append({
-                            "nombre": vm.get("nombre", ""),
-                            "cores": str(vm.get("cpu", 1)),
-                            "ram": f"{vm.get('memory', 512)}M",
-                            "almacenamiento": f"{vm.get('disk', 1)}G",
-                            "puerto_vnc": "",
-                            "image": vm.get("imagen", ""),
-                            "conexiones_vlans": "",
-                            "acceso": vm.get("conexion_remota", "no"),
-                            "server": ""
-                        })
-                    admin_email = auth_manager.get_current_user_email()
-                    new_slice = {
-                        "id_slice": new_id,
-                        "cantidad_vms": cantidad_vms,
-                        "vlans_separadas": vlans_separadas,
-                        "vlans_usadas": "",
-                        "vncs_separadas": "",
-                        "conexión_topologias": "",
-                        "topologias": [topologia_obj],
-                        "owner": admin_email
-                    }
-                    data.append(new_slice)
-                    with open(dbfile, 'w', encoding='utf-8') as f:
-                        json.dump(data, f, indent=2, ensure_ascii=False)
-                    print(f"{Colors.GREEN}Slice '{nombre}' creado exitosamente{Colors.ENDC}")
-                    print(f"  • ID: {new_id}")
-                    print(f"  • Nombre: {nombre}")
-                    print(f"  • Topología: {topologia}")
-                    print(f"  • VMs: {len(vms_data)}")
+                        print(f"\n{Colors.YELLOW}  Creación cancelada{Colors.ENDC}")
+                else:
+                    print(f"{Colors.RED}  ❌ Error: Formato de datos inesperado al crear slice: {datos}{Colors.ENDC}")
                     pause()
             except Exception as e:
                 from shared.ui_helpers import show_error
@@ -213,7 +186,10 @@ def _ver_slices_clientes(slice_manager, auth_manager):
     print("-" * 83)
     
     for i, s in enumerate(clientes, 1):
-        nombre = getattr(s, 'name', getattr(s, 'nombre', 'Sin nombre'))[:24]
+        nombre = getattr(s, 'name', getattr(s, 'nombre', ''))
+        if not nombre or nombre == '' or nombre == getattr(s, 'id', None):
+            nombre = getattr(s, 'topology', 'sin nombre')
+        nombre = str(nombre)[:24]
         usuario = getattr(s, 'owner', getattr(s, 'usuario', 'N/A'))[:34]
         estado = getattr(s, 'status', getattr(s, 'estado', 'activo'))[:9]
         sid = getattr(s, 'id', getattr(s, 'slice_id', ''))
@@ -593,7 +569,9 @@ def _ver_todos_slices(slice_api, auth_manager):
         else:
             print(f"\n{Colors.GREEN}  Total de slices: {len(slices)}{Colors.ENDC}\n")
             for i, s in enumerate(slices, 1):
-                nombre = s.get('nombre', s.get('nombre_slice', 'Sin nombre'))
+                nombre = s.get('nombre', s.get('nombre_slice', ''))
+                if not nombre or nombre == '' or nombre == s.get('id', None):
+                    nombre = s.get('topologia', s.get('topology', 'sin nombre'))
                 usuario = s.get('usuario', 'N/A')
                 print(f"{Colors.YELLOW}  [{i}] {nombre}{Colors.ENDC}")
                 print(f"      Usuario: {Colors.CYAN}{usuario}{Colors.ENDC}")
@@ -779,7 +757,9 @@ def _eliminar_slice_admin(slice_api, auth_manager):
 
         print(f"\n{Colors.YELLOW}  Seleccione slice a eliminar:{Colors.ENDC}")
         for i, s in enumerate(slices, 1):
-            nombre = s.get('nombre', s.get('nombre_slice', 'Sin nombre'))
+            nombre = s.get('nombre', s.get('nombre_slice', ''))
+            if not nombre or nombre == '' or nombre == s.get('id', None):
+                nombre = s.get('topologia', s.get('topology', 'sin nombre'))
             usuario = s.get('usuario', 'N/A')
             print(f"  {i}. {nombre}  |  Usuario: {usuario}")
 

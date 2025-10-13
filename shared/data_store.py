@@ -27,37 +27,48 @@ def guardar_slice(slice_data):
         new_id = str(max(ids) + 1) if ids else "1"
     else:
         new_id = "1"
-    vms_data = slice_data.get('vms', [])
-    cantidad_vms = str(len(vms_data))
-    vlans_separadas = str(len(data) + 1)
-    topologia_nombre = slice_data.get('topologia', 'lineal')
-    salida_internet = slice_data.get('salida_internet', 'no')
-    topologia_obj = {
-        "nombre": topologia_nombre,
-        "cantidad_vms": cantidad_vms,
-        "internet": salida_internet,
-        "vms": []
-    }
-    for vm in vms_data:
-        topologia_obj["vms"].append({
-            "nombre": vm.get("nombre", ""),
-            "cores": str(vm.get("cpu", 1)),
-            "ram": f"{vm.get('memory', 512)}M",
-            "almacenamiento": f"{vm.get('disk', 1)}G",
-            "puerto_vnc": "",
-            "image": vm.get("imagen", ""),
-            "conexiones_vlans": "",
-            "acceso": vm.get("conexion_remota", "no"),
-            "server": ""
-        })
+    # Esperar que slice_data['topologias'] sea una lista de topologías completas (cada una con su info y VMs)
+    topologias = slice_data.get('topologias')
+    if not topologias:
+        # Compatibilidad: si no viene la lista, usar el flujo anterior (1 sola topología)
+        vms_data = slice_data.get('vms', [])
+        cantidad_vms = str(len(vms_data))
+        vlans_separadas = str(len(data) + 1)
+        topologia_nombre = slice_data.get('topologia', 'lineal')
+        salida_internet = slice_data.get('salida_internet', 'no')
+        topologia_obj = {
+            "nombre": topologia_nombre,
+            "cantidad_vms": cantidad_vms,
+            "internet": salida_internet,
+            "vms": []
+        }
+        for vm in vms_data:
+            topologia_obj["vms"].append({
+                "nombre": vm.get("nombre", ""),
+                "cores": str(vm.get("cpu", 1)),
+                "ram": f"{vm.get('memory', 512)}M",
+                "almacenamiento": f"{vm.get('disk', 1)}G",
+                "puerto_vnc": "",
+                "image": vm.get("imagen", ""),
+                "conexiones_vlans": "",
+                "acceso": vm.get("conexion_remota", "no"),
+                "server": ""
+            })
+        topologias = [topologia_obj]
+        cantidad_vms = str(len(vms_data))
+    else:
+        # Si viene la lista de topologías, calcular cantidad_vms sumando todas
+        cantidad_vms = str(sum(int(t.get('cantidad_vms', len(t.get('vms', [])))) for t in topologias))
+        vlans_separadas = str(len(data) + 1)
+
     new_slice = {
         "id_slice": new_id,
         "cantidad_vms": cantidad_vms,
         "vlans_separadas": vlans_separadas,
         "vlans_usadas": "",
         "vncs_separadas": "",
-        "conexión_topologias": "",
-        "topologias": [topologia_obj],
+        "conexión_topologias": slice_data.get('conexión_topologias', ''),
+        "topologias": topologias,
         "owner": slice_data.get('usuario', '')
     }
     data.append(new_slice)

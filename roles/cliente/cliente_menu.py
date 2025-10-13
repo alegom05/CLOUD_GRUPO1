@@ -37,7 +37,7 @@ def cliente_menu(auth_manager, slice_manager, auth_service=None):
         print("  1. Crear Nuevo Slice")
         print("  2. Ver mis slices")
         print("  3. Eliminar Slice")
-        print("  4. Pausar/Reactivar Slice")
+        print("  4. Activar/Desactivar Slice")
         print(Colors.RED + "\n  0. Cerrar Sesión" + Colors.ENDC)
 
         choice = input("\nSeleccione opción: ")
@@ -65,13 +65,17 @@ def _pausar_reactivar_slice(auth_manager, slice_manager):
     # Obtener todos los slices del SliceManager
     all_slices = slice_manager.get_slices()
     
-    # Filtrar slices del usuario actual (usando email o username)
-    slices_usuario = []
-    for s in all_slices:
-        if (s.owner == usuario_actual_email or 
-            s.owner == usuario_actual_username or
-            (hasattr(s, 'usuario') and s.usuario == usuario_actual_username)):
-            slices_usuario.append(s)
+    # Filtrar slices del usuario actual (usando email o username, robusto)
+    def es_mi_slice(s):
+        if isinstance(s, dict):
+            slice_user = s.get('usuario') or s.get('owner') or s.get('user')
+            return slice_user == usuario_actual_email or slice_user == usuario_actual_username
+        else:
+            slice_owner = (getattr(s, 'owner', None) or 
+                          getattr(s, 'usuario', None) or 
+                          getattr(s, 'user', None))
+            return slice_owner == usuario_actual_email or slice_owner == usuario_actual_username
+    slices_usuario = [s for s in all_slices if es_mi_slice(s)]
 
     if not slices_usuario:
         from shared.ui_helpers import show_info
@@ -184,9 +188,9 @@ def _crear_slice(auth_manager, slice_manager, slice_builder):
         builder = slice_builder(auth_manager.current_user)
         datos = builder.start()
         print(f"[DEBUG] Datos retornados por builder.start(): {datos}")
-        if isinstance(datos, tuple) and len(datos) == 4:
-            nombre, topologia, vms_data, salida_internet = datos
-            if nombre and topologia and vms_data:
+        if isinstance(datos, tuple) and len(datos) == 6:
+            nombre, topologia, vms_data, salida_internet, conexion_topologias, topologias_json = datos
+            if nombre and topologia and vms_data and topologias_json:
                 print(f"{Colors.CYAN}Guardando slice localmente...{Colors.ENDC}")
                 from shared.data_store import guardar_slice
                 user_email = getattr(auth_manager.current_user, 'email', None)
@@ -196,7 +200,9 @@ def _crear_slice(auth_manager, slice_manager, slice_builder):
                     'topologia': topologia,
                     'vms': vms_data,
                     'salida_internet': salida_internet,
-                    'usuario': user_owner
+                    'usuario': user_owner,
+                    'conexión_topologias': conexion_topologias,
+                    'topologias': topologias_json
                 }
                 print(f"[DEBUG] Diccionario a guardar: {slice_obj}")
                 guardar_slice(slice_obj)
@@ -391,12 +397,17 @@ def _eliminar_slice(auth_manager, slice_manager):
         all_slices = slice_manager.get_slices()
         
         # Filtrar slices del usuario actual (usando email o username)
-        slices_usuario = []
-        for s in all_slices:
-            if (s.owner == usuario_actual_email or 
-                s.owner == usuario_actual_username or
-                (hasattr(s, 'usuario') and s.usuario == usuario_actual_username)):
-                slices_usuario.append(s)
+        # Filtrar slices del usuario actual (usando email o username, robusto)
+        def es_mi_slice(s):
+            if isinstance(s, dict):
+                slice_user = s.get('usuario') or s.get('owner') or s.get('user')
+                return slice_user == usuario_actual_email or slice_user == usuario_actual_username
+            else:
+                slice_owner = (getattr(s, 'owner', None) or 
+                              getattr(s, 'usuario', None) or 
+                              getattr(s, 'user', None))
+                return slice_owner == usuario_actual_email or slice_owner == usuario_actual_username
+        slices_usuario = [s for s in all_slices if es_mi_slice(s)]
 
         if not slices_usuario:
             from shared.ui_helpers import show_info
@@ -406,7 +417,12 @@ def _eliminar_slice(auth_manager, slice_manager):
 
         print(f"\n{Colors.YELLOW}  Seleccione slice a eliminar:{Colors.ENDC}")
         for i, s in enumerate(slices_usuario, 1):
-            print(f"  {i}. {s.name}")
+            # Mostrar el nombre real si existe, si no mostrar la topología principal como nombre
+            nombre = getattr(s, 'name', None)
+            if not nombre or nombre == '' or nombre == s.id:
+                # Si no hay nombre, usar la topología principal como nombre
+                nombre = getattr(s, 'topology', 'sin nombre')
+            print(f"  {i}. {nombre}")
 
         print(f"  0. Cancelar")
 
@@ -480,6 +496,8 @@ def ver_mis_slices_y_detalles(auth_manager, slice_manager):
     user = auth_manager.current_user
     user_email = getattr(user, 'email', None) or getattr(user, 'username', None)
     user_username = getattr(user, 'username', None) or getattr(user, 'email', None)
+    print(f"[DEBUG] user_email: {user_email}")
+    print(f"[DEBUG] user_username: {user_username}")
     print_header(user)
     print(Colors.BOLD + "\n  MIS SLICES" + Colors.ENDC)
     # Cargar mapa de datos extra desde JSON (salida_internet y conexion_remota por VM)
@@ -504,20 +522,23 @@ def ver_mis_slices_y_detalles(auth_manager, slice_manager):
     def es_mi_slice(s):
         if isinstance(s, dict):
             slice_user = s.get('usuario') or s.get('owner') or s.get('user')
+            print(f"[DEBUG] slice_user: {slice_user}")
             return slice_user == user_email or slice_user == user_username
         else:
             slice_owner = (getattr(s, 'owner', None) or 
                           getattr(s, 'usuario', None) or 
                           getattr(s, 'user', None))
+            print(f"[DEBUG] slice_owner: {slice_owner}")
             return slice_owner == user_email or slice_owner == user_username
+    # Mostrar solo los slices del usuario actual (rol cliente)
     slices = [s for s in slice_manager.get_slices() if es_mi_slice(s)]
     if not slices:
         print("\n  No tienes slices creados")
         pause()
         return
     # Mostrar tabla
-    print("\n{:<7} {:<25} {:<40} {:<13} {:<10}".format("N°", "Nombre de slice", "Topologias-VMs", "Internet", "Estado"))
-    print("-"*100)
+    print("\n{:<15} {:<40} {:<13} {:<10}".format("ID_SLICE", "Topologias-VMs", "Internet", "Estado"))
+    print("-"*80)
     def clean_topo_name(val):
         # Convert enums or other types to string, then clean
         val_str = str(val)
@@ -539,15 +560,18 @@ def ver_mis_slices_y_detalles(auth_manager, slice_manager):
         else:
             return []
 
-    for i, s in enumerate(slices, 1):
+    # Ordenar por id_slice (o id)
+    def get_id(s):
+        return getattr(s, 'id', None) or getattr(s, 'slice_id', None) or getattr(s, 'id_slice', None) or ''
+    slices_sorted = sorted(slices, key=get_id)
+    for s in slices_sorted:
         topologia_literal = getattr(s, 'topologia', None) or getattr(s, 'topology', None) or ''
         estado = getattr(s, 'status', None) or getattr(s, 'estado', 'activo')
-        nombre = getattr(s, 'name', None) or getattr(s, 'nombre', '')
         vms = getattr(s, 'vms', None) or []
         topovms = f"{topologia_literal} ({len(vms)} VMs)"
-        sid = getattr(s, 'id', None) or getattr(s, 'slice_id', None) or ''
+        sid = get_id(s)
         internet = db_slices_map.get(str(sid), {}).get('salida_internet', 'no')
-        print("{:<7} {:<25} {:<40} {:<13} {:<10}".format(i, nombre, topovms, internet, estado))
+        print("{:<15} {:<40} {:<13} {:<10}".format(sid, topovms, internet, estado))
     # Selección de slice
     print("\nSeleccione slice (1, 2, 3, ...) para ver más detalles o 0 para salir:", end=" ")
     sel = input().strip()
@@ -568,28 +592,41 @@ def ver_mis_slices_y_detalles(auth_manager, slice_manager):
     sid = getattr(s, 'id', None) or getattr(s, 'slice_id', None) or ''
     internet = db_slices_map.get(str(sid), {}).get('salida_internet', 'no')
     print(f"Salida a Internet: {internet}")
-    vms = getattr(s, 'vms', None) or []
-    # VMs del JSON para enriquecer datos (conexion_remota)
-    vms_db = db_slices_map.get(str(sid), {}).get('vms', [])
-    for i, vm in enumerate(vms, 1):
-        # Obtener imagen
-        imagen = getattr(vm, 'imagen', None) or vm.get('imagen', 'cirros-0.5.1-x86_64-disk.img') if isinstance(vm, dict) else 'cirros-0.5.1-x86_64-disk.img'
-        # Obtener conexion_remota
-        if isinstance(vm, dict):
-            conexion_remota = vm.get('conexion_remota', 'no')
-        else:
-            conexion_remota = 'no'
-            if 0 <= (i - 1) < len(vms_db):
-                conexion_remota = vms_db[i - 1].get('conexion_remota', 'no')
-        print(f"VM {i} ({imagen}):")
-        # Mostrar solo campos relevantes
-        campos = ['nombre', 'flavor', 'cpu', 'memory', 'disk', 'imagen']
-        for k in campos:
-            val = getattr(vm, k, None) if not isinstance(vm, dict) else vm.get(k, None)
-            if val is not None and k != 'imagen':
-                print(f"   {k}: {val}")
-        print(f"   conexion_remota: {conexion_remota}")
-        print("-")
+    # Mostrar todas las VMs agrupadas por topología
+    topologias = getattr(s, 'topologias', None) or getattr(s, 'topology_segments', None) or []
+    if not topologias and hasattr(s, 'topology') and hasattr(s, 'vms'):
+        # Compatibilidad con modelo antiguo
+        topologias = [{
+            'nombre': getattr(s, 'topology', ''),
+            'vms': [vm for vm in getattr(s, 'vms', [])]
+        }]
+    for topo in topologias:
+        nombre_topo = topo.get('nombre', 'sin nombre')
+        vms_topo = topo.get('vms', [])
+        print(f"\nTopología: {nombre_topo}")
+        for i, vm in enumerate(vms_topo, 1):
+            # Soporta tanto dict como objeto VM
+            if hasattr(vm, 'get'):
+                imagen = vm.get('imagen', vm.get('image', 'cirros-0.5.1-x86_64-disk.img'))
+                conexion_remota = vm.get('conexion_remota', vm.get('acceso', 'no'))
+                campos = ['nombre', 'flavor', 'cpu', 'memory', 'disk', 'imagen']
+                print(f"VM {i} ({imagen}):")
+                for k in campos:
+                    val = vm.get(k, None)
+                    if val is not None and k != 'imagen':
+                        print(f"   {k}: {val}")
+                print(f"   conexion_remota: {conexion_remota}")
+            else:
+                imagen = getattr(vm, 'imagen', None) or getattr(vm, 'image', 'cirros-0.5.1-x86_64-disk.img')
+                conexion_remota = getattr(vm, 'conexion_remota', None) or getattr(vm, 'acceso', 'no')
+                campos = ['nombre', 'flavor', 'cpu', 'memory', 'disk', 'imagen']
+                print(f"VM {i} ({imagen}):")
+                for k in campos:
+                    val = getattr(vm, k, None)
+                    if val is not None and k != 'imagen':
+                        print(f"   {k}: {val}")
+                print(f"   conexion_remota: {conexion_remota}")
+            print("-")
     pause()
     # Volver a mostrar la lista de slices en vez de salir al menú principal
     return ver_mis_slices_y_detalles(auth_manager, slice_manager)

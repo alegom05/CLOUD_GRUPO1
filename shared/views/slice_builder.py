@@ -428,7 +428,7 @@ class SliceBuilder:
             return False
         return True
     
-    def _generar_datos_slice(self) -> Tuple[str, str, List[Dict], str]:
+    def _generar_datos_slice(self) -> Tuple[str, str, List[Dict], str, str, list]:
         """
         Genera los datos finales para enviar a la API
         
@@ -443,7 +443,7 @@ class SliceBuilder:
             topologia_str = "+".join(topo_parts)
         else:
             topologia_str = f"manual-{len(self.vms)}VMS"
-        
+
         # Preparar datos de VMs (se calcularán IPs y puertos en el backend)
         vms_data = []
         for vm in self.vms:
@@ -456,5 +456,40 @@ class SliceBuilder:
                 "conexion_remota": vm.get('conexion_remota', 'no'),
                 "imagen": vm.get('imagen', '')
             })
-        
-        return self.nombre_slice, topologia_str, vms_data, self.salida_internet
+
+        # Construir el campo 'conexión_topologias' según la cantidad de topologías
+        enlaces_str = ''
+        if len(self.topologias) == 2 and self.enlaces:
+            # Solo un enlace: el último
+            origen, destino = self.enlaces[-1]
+            enlaces_str = f"{self.vms[origen]['nombre']}-{self.vms[destino]['nombre']}"
+        elif len(self.topologias) == 3 and len(self.enlaces) >= 2:
+            # Dos enlaces: los dos últimos
+            enlaces = self.enlaces[-2:]
+            enlaces_str = ';'.join(f"{self.vms[o]['nombre']}-{self.vms[d]['nombre']}" for o, d in enlaces)
+        # Si hay 1 topología o no hay enlaces, queda vacío
+
+        # Preparar lista de topologías para el JSON final
+        topologias_json = []
+        for topo in self.topologias:
+            vms_json = []
+            for idx in topo.get('vms', []):
+                vm = self.vms[idx]
+                vms_json.append({
+                    "nombre": vm['nombre'],
+                    "cores": str(vm.get('cpu', 1)),
+                    "ram": f"{vm.get('memory', 512)}M",
+                    "almacenamiento": f"{vm.get('disk', 1)}G",
+                    "puerto_vnc": "",
+                    "image": vm.get('imagen', ''),
+                    "conexiones_vlans": "",
+                    "acceso": vm.get('conexion_remota', 'no'),
+                    "server": ""
+                })
+            topologias_json.append({
+                "nombre": topo.get('tipo', ''),
+                "cantidad_vms": str(len(topo.get('vms', []))),
+                "internet": self.salida_internet,
+                "vms": vms_json
+            })
+        return self.nombre_slice, topologia_str, vms_data, self.salida_internet, enlaces_str, topologias_json
