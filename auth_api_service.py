@@ -58,7 +58,6 @@ class AuthAPIService:
                 timeout=10,
                 verify=False
             )
-            
             print(f"[DEBUG] Status Code: {response.status_code}")
             log_debug(f"[DEBUG] Status Code: {response.status_code}")
             print(f"[DEBUG] Respuesta: {response.text}")
@@ -66,11 +65,8 @@ class AuthAPIService:
             if response.status_code == 200:
                 data = response.json()
                 self.token = data.get('token')
-                
                 # Extraer user_info de la respuesta
                 user_info = data.get('user_info', {})
-                
-                # Construir user_data desde user_info
                 self.user_data = {
                     'correo': user_info.get('correo', correo),
                     'nombre': user_info.get('nombre', ''),
@@ -78,31 +74,24 @@ class AuthAPIService:
                     'id': user_info.get('id', ''),
                     'rol': user_info.get('rol', 'cliente')
                 }
-                
                 api_role = self.user_data.get('rol', '').lower()
                 print(f"[DEBUG] API Role recibido: '{api_role}'")
                 log_debug(f"[DEBUG] API Role recibido: '{api_role}'")
-                
                 self.user_role = self.ROLE_MAPPING.get(api_role, 'cliente')
                 print(f"[DEBUG] Role mapeado: '{self.user_role}'")
                 log_debug(f"[DEBUG] Role mapeado: '{self.user_role}'")
-                
                 print(f"[DEBUG] ✅ Login exitoso")
                 log_debug(f"[DEBUG] ✅ Login exitoso")
-                print(f"[DEBUG] Usuario: {self.user_data.get('nombre', 'N/A')}")
                 log_debug(f"[DEBUG] Usuario: {self.user_data.get('nombre', 'N/A')}")
                 print(f"[DEBUG] Rol final: {self.user_role}")
                 log_debug(f"[DEBUG] Rol final: {self.user_role}")
                 return True
-            else:
-                print("[ERROR] ❌ El logueo no fue correcto, verifique su usuario y contraseña.")
-                input("[INFO] Presione Enter para intentar nuevamente o Ctrl+C para salir...")
-                return False
-
             print(f"[DEBUG] ❌ Login falló con status code: {response.status_code}")
             log_debug(f"[DEBUG] ❌ Login falló con status code: {response.status_code}")
             print(f"[DEBUG] Respuesta: {response.text}")
             log_debug(f"[DEBUG] Respuesta: {response.text}")
+            print("[ERROR] ❌ El logueo no fue correcto, verifique su usuario y contraseña.")
+            input("[INFO] Presione Enter para intentar nuevamente o Ctrl+C para salir...")
             return False
             
         except requests.exceptions.ConnectionError as e:

@@ -1,7 +1,7 @@
 def ver_detalles_slice(slice_manager, user=None):
     """Permite seleccionar y ver detalles completos de un slice, incluyendo el dibujo de la topología"""
     if user:
-        slices = [s for s in slice_manager.get_slices() if s.owner == user.username]
+        slices = [s for s in slice_manager.get_slices() if getattr(s, 'usuario', None) == user.username]
     else:
         slices = slice_manager.get_slices()
     
@@ -28,7 +28,7 @@ def ver_detalles_slice(slice_manager, user=None):
     print(f"ID: {s.id}")
     print(f"Nombre: {s.name}")
     print(f"Topología: {s.topology.value}")
-    print(f"Propietario: {s.owner}")
+    # print(f"Propietario: {s.owner}")
     print(f"Creado: {s.created_at}")
     print(f"Estado: {getattr(s, 'status', 'N/A')}")
     print(f"VMs: {len(s.vms)}")
@@ -55,7 +55,7 @@ def show_slice_details_enhanced(slice_manager, user=None):
     print_header(user)
     print(Colors.BOLD + "\n  DETALLES DE SLICE" + Colors.ENDC)
     if user:
-        slices = [s for s in slice_manager.get_slices() if s.owner == user.username]
+        slices = [s for s in slice_manager.get_slices() if getattr(s, 'usuario', None) == user.username]
     else:
         slices = slice_manager.list_slices()
     if not slices:

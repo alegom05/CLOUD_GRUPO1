@@ -30,7 +30,7 @@ def admin_menu(auth_manager, slice_manager, auth_service=None):
         return
     
     # Configurar URL de la API
-    api_url = os.getenv('AUTH_API_URL', 'http://localhost:8080').replace('/auth', '')
+    api_url = os.getenv('SLICE_API_URL', 'http://localhost:8000')
     
     # Obtener email del usuario
     user_email = auth_manager.get_current_user_email()
@@ -74,7 +74,7 @@ def admin_menu(auth_manager, slice_manager, auth_service=None):
             try:
                 builder = SliceBuilder(auth_manager.current_user)
                 datos = builder.start()
-                print(f"[DEBUG] Datos retornados por builder.start(): {datos}")
+                # print(f"[DEBUG] Datos retornados por builder.start(): {datos}")
                 if isinstance(datos, tuple) and len(datos) == 6:
                     nombre, topologia, vms_data, salida_internet, conexion_topologias, topologias_json = datos
                     if nombre and topologia and vms_data and topologias_json:
@@ -90,7 +90,7 @@ def admin_menu(auth_manager, slice_manager, auth_service=None):
                             'conexión_topologias': conexion_topologias,
                             'topologias': topologias_json
                         }
-                        print(f"[DEBUG] Diccionario a guardar: {slice_obj}")
+                        # print(f"[DEBUG] Diccionario a guardar: {slice_obj}")
                         guardar_slice(slice_obj)
                         print(f"{Colors.GREEN}Slice '{nombre}' creado exitosamente{Colors.ENDC}")
                         print(f"  • Nombre: {nombre}")
@@ -138,17 +138,20 @@ def _ver_slices_clientes(slice_manager, auth_manager):
     """Ver solo slices de clientes (NO del admin actual)"""
     from shared.ui_helpers import print_header, pause
     from shared.colors import Colors
-    
     print_header(None)
     print(Colors.BOLD + "\n  SLICES DE CLIENTES" + Colors.ENDC)
     print("  " + "="*50)
-    
-    slices = slice_manager.get_slices()
+    from core.services.slice_api_service import SliceAPIService
+    api_url = os.getenv('SLICE_API_URL', 'http://localhost:8000')
+    token = getattr(auth_manager, 'api_token', None) or getattr(auth_manager, 'token', None)
+    user_email = auth_manager.get_current_user_email()
+    slice_api = SliceAPIService(api_url, token, user_email)
+    slices = slice_api.list_all_slices()
 
     # Cargar mapa desde base_de_datos.json para salida_internet y conexion_remota
     db_slices_map = {}
     try:
-        import json, os
+        import json
         db_path = os.path.join(os.getcwd(), 'base_de_datos.json')
         if os.path.exists(db_path):
             with open(db_path, 'r', encoding='utf-8') as f:
@@ -870,47 +873,56 @@ def _gestionar_usuarios(auth_manager):
     
     print(f"\n{Colors.YELLOW}💡 Los usuarios se gestionan en el sistema de autenticación{Colors.ENDC}")
     print(f"{Colors.CYAN}Acciones disponibles:{Colors.ENDC}")
-    print("  • Crear usuario")
-    print("  • Modificar usuario")
-    print("  • Desactivar usuario")
-    print("  • Asignar roles")
-    
-    print(f"\n{Colors.CYAN}Esta funcionalidad requiere endpoints específicos en la API{Colors.ENDC}")
-    
-    pause()
-
-
-def _ver_logs(auth_manager):
-    """Ver logs del sistema"""
-    if not auth_manager.has_permission("access_all_logs"):
-        print(f"\n{Colors.RED}  ❌ No tiene permisos para ver logs{Colors.ENDC}")
+    try:
+        # Usar constructor interactivo
+        builder = SliceBuilder(auth_manager.current_user)
+        datos = builder.start()
+        if isinstance(datos, tuple) and len(datos) == 6:
+            nombre, topologia, vms_data, salida_internet, conexion_topologias, topologias_json = datos
+            if nombre and topologia and vms_data and topologias_json:
+                # Construir el JSON para la API
+                solicitud_json = {
+                    "id_slice": "",
+                    "cantidad_vms": str(len(vms_data)),
+                    "vlans_separadas": "",
+                    "vlans_usadas": "",
+                    "vncs_separadas": "",
+                    "conexion_topologias": conexion_topologias,
+                    "topologias": topologias_json
+                }
+                print(f"{Colors.CYAN}Enviando solicitud de creación de slice a la API...{Colors.ENDC}")
+                resp = slice_api.create_slice_api(nombre, solicitud_json)
+                if resp.get("ok"):
+                    print(f"{Colors.GREEN}Slice '{nombre}' creado exitosamente en la API{Colors.ENDC}")
+                    print(f"  • Nombre: {nombre}")
+                    print(f"  • Topología: {topologia}")
+                    print(f"  • VMs: {len(vms_data)}")
+                    pause()
+                    return
+                else:
+                    print(f"{Colors.RED}  ❌ Error al crear slice en la API: {resp.get('error')}{Colors.ENDC}")
+                    print(f"{Colors.YELLOW}  Guardando localmente como respaldo...{Colors.ENDC}")
+                    from shared.data_store import guardar_slice
+                    user_email = getattr(auth_manager.current_user, 'email', None)
+                    user_owner = user_email if user_email else getattr(auth_manager.current_user, 'username', '')
+                    slice_obj = {
+                        'nombre': nombre,
+                        'topologia': topologia,
+                        'vms': vms_data,
+                        'salida_internet': salida_internet,
+                        'usuario': user_owner,
+                        'conexion_topologias': conexion_topologias,
+                        'topologias': topologias_json
+                    }
+                    guardar_slice(slice_obj)
+                    print(f"{Colors.GREEN}Slice '{nombre}' guardado localmente{Colors.ENDC}")
+                    pause()
+                    return
+            else:
+                print(f"\n{Colors.YELLOW}  Creación cancelada{Colors.ENDC}")
+        else:
+            print(f"{Colors.RED}  ❌ Error: Formato de datos inesperado al crear slice: {datos}{Colors.ENDC}")
+            pause()
+    except Exception as e:
+        print(f"{Colors.RED}Error inesperado: {e}{Colors.ENDC}")
         pause()
-        return
-    
-    print_header(auth_manager.current_user)
-    print(Colors.BOLD + "\n  LOGS DEL SISTEMA" + Colors.ENDC)
-    print("  " + "="*60)
-    
-    print(f"\n{Colors.YELLOW}💡 Implementar visualización de logs{Colors.ENDC}")
-    print(f"{Colors.CYAN}Tipos de logs sugeridos:{Colors.ENDC}")
-    print("  • Acciones de usuarios")
-    print("  • Creación/eliminación de slices")
-    print("  • Errores del sistema")
-    print("  • Accesos al sistema")
-    
-    pause()
-
-
-def _cerrar_sesion(auth_manager, auth_service):
-    """Cerrar sesión limpiando ambos sistemas"""
-    print(f"\n{Colors.CYAN}👋 Cerrando sesión de administrador...{Colors.ENDC}")
-    
-    auth_manager.logout()
-    print(f"{Colors.GREEN}  ✅ Sesión local cerrada{Colors.ENDC}")
-    
-    if auth_service:
-        auth_service.logout()
-        print(f"{Colors.GREEN}  ✅ Sesión API cerrada{Colors.ENDC}")
-    
-    print(f"\n{Colors.CYAN}¡Hasta pronto!{Colors.ENDC}")
-    pause()

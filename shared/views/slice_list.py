@@ -11,7 +11,7 @@ def view_my_slices(slice_manager, user):
     print_header(user)
     print(Colors.BOLD + "\n  MIS SLICES" + Colors.ENDC)
     
-    slices = [s for s in slice_manager.get_slices() if s.owner == user.username]
+    slices = [s for s in slice_manager.get_slices() if getattr(s, 'usuario', None) == user.username]
     
     if not slices:
         print("\n  No tienes slices creados")
@@ -53,7 +53,7 @@ def view_all_slices(slice_manager):
         for s in slices:
             print(f"  • {Colors.YELLOW}{s.id}{Colors.ENDC}")
             print(f"    Nombre: {s.name}")
-            print(f"    Owner: {s.owner}")
+            # print(f"    Owner: {s.owner}")
             print(f"    Topología: {s.topology.value}")
             print(f"    VMs: {len(s.vms)}")
             print()

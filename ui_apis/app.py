@@ -1,16 +1,30 @@
-from fastapi import FastAPI, HTTPException, Depends, status
+from fastapi import FastAPI, HTTPException, Depends, status, Body
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
-from typing import Optional
+from typing import Optional, List, Dict
+from pydantic import BaseModel
 import sys
 import os
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from slice_manager.models import (
-    SliceCreate, SliceResponse, SlicesListResponse, 
-    UserLogin, Token, SliceStatusUpdate
-)
-from slice_manager.manager import SliceManager
+from core.slice_manager.models import SliceCreate, Slice, VM
+from core.slice_manager.manager import SliceManager
+
+# Modelos de respuesta simplificados
+class Token(BaseModel):
+    access_token: str
+    token_type: str
+
+class SliceResponse(BaseModel):
+    message: str
+    slice: Optional[dict] = None
+
+class SlicesListResponse(BaseModel):
+    slices: List[dict]
+    total: int
+
+class SliceStatusUpdate(BaseModel):
+    status: str
 
 # Configuración de FastAPI
 app = FastAPI(
@@ -148,6 +162,62 @@ async def health_check():
         "service": "UI-APIs",
         "slices_count": len(slice_manager.slices)
     }
+
+# Endpoint para crear slice desde servicio externo (formato especial)
+@app.post("/slices/solicitud_creacion")
+async def solicitud_creacion(payload: dict = Body(...), current_user: dict = Depends(get_current_user)):
+    """
+    Recibe una solicitud de creación de slice en formato especial (nombre_slice y solicitud_json), lo guarda y lo hace visible en los listados estándar.
+    """
+    nombre_slice = payload.get("nombre_slice")
+    solicitud_json = payload.get("solicitud_json")
+    # Mapear el JSON recibido a SliceCreate (adaptar según tu modelo)
+    try:
+        # Extraer datos básicos
+        cantidad_vms = int(solicitud_json.get("cantidad_vms", 1))
+        topologias = solicitud_json.get("topologias", [])
+        # Tomar la primera topología como principal
+        topo = topologias[0] if topologias else {}
+        topology_name = topo.get("nombre", "lineal")
+        internet = topo.get("internet", "no")
+        vms_data = topo.get("vms", [])
+        # Crear lista de VMs
+        from core.slice_manager.models import VM, SliceCreate, TopologyType
+        vms = []
+        for vm in vms_data:
+            vms.append(VM(
+                id=vm.get("nombre", ""),
+                name=vm.get("nombre", ""),
+                cpu=int(vm.get("cores", "1")),
+                memory=int(vm.get("ram", "500M").replace("M", "")),
+                disk=int(float(vm.get("almacenamiento", "1G").replace("G", ""))),
+                flavor="small",
+                status="pending",
+                conexion_remota=vm.get("acceso", "no"),
+                imagen=vm.get("image", "")
+            ))
+        # Crear objeto SliceCreate
+        slice_create = SliceCreate(
+            name=nombre_slice,
+            topology=TopologyType(topology_name) if topology_name in TopologyType._value2member_map_ else TopologyType.LINEAR,
+            num_vms=cantidad_vms,
+            cpu=1,
+            memory=512,
+            disk=1,
+            flavor="small"
+        )
+        # Eliminar id_slice del json antes de guardar
+        if "id_slice" in solicitud_json:
+            solicitud_json["id_slice"] = ""
+        # Crear el slice usando el manager
+        slice_obj = slice_manager.create_slice(slice_create, current_user["username"], vms_override=vms)
+        return {
+            "message": "Slice creado y guardado correctamente (servicio externo)",
+            "slice": slice_obj.to_dict() if hasattr(slice_obj, 'to_dict') else str(slice_obj)
+        }
+    except Exception as e:
+        return {"error": str(e), "message": "Error al crear el slice desde el servicio externo"}
+
 
 if __name__ == "__main__":
     import uvicorn

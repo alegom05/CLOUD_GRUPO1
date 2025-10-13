@@ -8,6 +8,76 @@ from typing import List, Dict, Optional
 
 
 class SliceAPIService:
+
+    def create_slice_api(self, nombre_slice: str, solicitud_json: dict) -> dict:
+        """
+        Crea un slice usando el endpoint /slices/solicitud_creacion (servicio externo)
+        Args:
+            nombre_slice: nombre del slice
+            solicitud_json: dict con la estructura completa de la solicitud (ver ejemplo curl)
+        Returns:
+            dict con la respuesta de la API o error
+        """
+        payload = {
+            "nombre_slice": nombre_slice,
+            "solicitud_json": solicitud_json
+        }
+        try:
+            response = requests.post(
+                f"{self.api_url}/slices/solicitud_creacion",
+                headers=self.headers,
+                json=payload,
+                verify=False,
+                timeout=15
+            )
+            if response.status_code in (200, 201):
+                return {"ok": True, "data": response.json()}
+            else:
+                return {"ok": False, "error": response.text, "status": response.status_code}
+        except Exception as e:
+            return {"ok": False, "error": str(e)}
+    def list_all_slices(self) -> list:
+        """
+        Listar todos los slices (para admin)
+        """
+        try:
+            response = requests.get(
+                f"{self.api_url}/api/slices",
+                headers=self.headers,
+                timeout=10
+            )
+            if response.status_code == 200:
+                data = response.json()
+                return data.get('slices', [])
+            else:
+                print(f"[ERROR] Error al listar slices: {response.status_code}")
+                return []
+        except Exception as e:
+            print(f"[ERROR] Error al listar slices: {e}")
+            return []
+
+    def list_my_slices(self) -> list:
+        """
+        Listar los slices del usuario autenticado (cliente)
+        """
+        try:
+            response = requests.get(
+                f"{self.api_url}/api/slices",
+                headers=self.headers,
+                timeout=10
+            )
+            if response.status_code == 200:
+                data = response.json()
+                # Filtrar por usuario si el backend no lo hace
+                if self.user_email:
+                    return [s for s in data.get('slices', []) if s.get('usuario') == self.user_email]
+                return data.get('slices', [])
+            else:
+                print(f"[ERROR] Error al listar mis slices: {response.status_code}")
+                return []
+        except Exception as e:
+            print(f"[ERROR] Error al listar mis slices: {e}")
+            return []
     """Servicio para gestión de slices con API externa"""
     
     def __init__(self, api_url: str, token: str, user_email: str = None):

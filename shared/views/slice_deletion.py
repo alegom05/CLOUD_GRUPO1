@@ -8,7 +8,7 @@ def delete_any_slice(slice_manager):
         print("\n  No hay slices para eliminar")
     else:
         for i, s in enumerate(slices, 1):
-            print(f"  {i}. {s.id} - {s.name} (Owner: {s.owner})")
+            print(f"  {i}. {s.id} - {s.name}")
         
         choice = input("\n  Seleccione slice (0 para cancelar): ")
         if choice != '0' and choice.isdigit():
@@ -26,7 +26,7 @@ def delete_my_slice(slice_manager, user):
     print_header(user)
     print(Colors.BOLD + "\n  ELIMINAR MI SLICE" + Colors.ENDC)
     
-    my_slices = [s for s in slice_manager.get_slices() if s.owner == user.username]
+    my_slices = [s for s in slice_manager.get_slices() if getattr(s, 'usuario', None) == user.username]
     
     if not my_slices:
         print("\n  No tienes slices para eliminar")

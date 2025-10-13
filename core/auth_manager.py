@@ -135,7 +135,7 @@ class AuthManager:
             self.current_user.full_name = api_data.get('nombre')
         else:
             self.current_user.full_name = email
-        print(f"[DEBUG] Sesión local creada para {email} con rol {role.value} y nombre {self.current_user.full_name}")
+    # print(f"[DEBUG] Sesión local creada para {email} con rol {role.value} y nombre {self.current_user.full_name}")
         return True
     
     def logout(self) -> bool:

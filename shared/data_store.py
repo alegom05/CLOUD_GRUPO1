@@ -7,7 +7,7 @@ VMS_JSON = os.path.join(os.path.dirname(__file__), '..', 'vms.json')
 def guardar_slice(slice_data):
     """Agrega un slice al archivo base_de_datos.json en el formato ejemplo (lista de objetos)"""
     import uuid
-    print("[DEBUG] guardar_slice llamado con:", slice_data)
+    # print("[DEBUG] guardar_slice llamado con:", slice_data)
     import sys
     sys.stdout.flush()
     try:
@@ -86,7 +86,7 @@ def guardar_slice(slice_data):
     try:
         with open(BASE_JSON, 'w', encoding='utf-8') as f:
             json.dump(data_clean, f, indent=2, ensure_ascii=False)
-        print("[DEBUG] Slice guardado exitosamente en base_de_datos.json")
+    # print("[DEBUG] Slice guardado exitosamente en base_de_datos.json")
     except Exception as e:
         print("[ERROR] Al guardar base_de_datos.json:", e)
 

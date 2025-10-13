@@ -187,31 +187,50 @@ def _crear_slice(auth_manager, slice_manager, slice_builder):
     try:
         builder = slice_builder(auth_manager.current_user)
         datos = builder.start()
-        print(f"[DEBUG] Datos retornados por builder.start(): {datos}")
         if isinstance(datos, tuple) and len(datos) == 6:
             nombre, topologia, vms_data, salida_internet, conexion_topologias, topologias_json = datos
             if nombre and topologia and vms_data and topologias_json:
-                print(f"{Colors.CYAN}Guardando slice localmente...{Colors.ENDC}")
-                from shared.data_store import guardar_slice
-                user_email = getattr(auth_manager.current_user, 'email', None)
-                user_owner = user_email if user_email else getattr(auth_manager.current_user, 'username', '')
-                slice_obj = {
-                    'nombre': nombre,
-                    'topologia': topologia,
-                    'vms': vms_data,
-                    'salida_internet': salida_internet,
-                    'usuario': user_owner,
-                    'conexión_topologias': conexion_topologias,
-                    'topologias': topologias_json
+                # Construir el JSON para la API
+                solicitud_json = {
+                    "id_slice": "",
+                    "cantidad_vms": str(len(vms_data)),
+                    "vlans_separadas": "",
+                    "vlans_usadas": "",
+                    "vncs_separadas": "",
+                    "conexion_topologias": conexion_topologias,
+                    "topologias": topologias_json
                 }
-                print(f"[DEBUG] Diccionario a guardar: {slice_obj}")
-                guardar_slice(slice_obj)
-                print(f"{Colors.GREEN}Slice '{nombre}' creado exitosamente{Colors.ENDC}")
-                print(f"  \u2022 Nombre: {nombre}")
-                print(f"  \u2022 Topología: {topologia}")
-                print(f"  \u2022 VMs: {len(vms_data)}")
-                pause()
-                return
+                from core.services.slice_api_service import SliceAPIService
+                api_url = os.getenv('SLICE_API_URL', 'http://localhost:8000')
+                token = getattr(auth_manager, 'api_token', None) or getattr(auth_manager, 'token', None)
+                user_email = getattr(auth_manager.current_user, 'email', None) or getattr(auth_manager.current_user, 'username', None)
+                slice_api = SliceAPIService(api_url, token, user_email)
+                print(f"{Colors.CYAN}Enviando solicitud de creación de slice a la API...{Colors.ENDC}")
+                resp = slice_api.create_slice_api(nombre, solicitud_json)
+                if resp.get("ok"):
+                    print(f"{Colors.GREEN}Slice '{nombre}' creado exitosamente en la API{Colors.ENDC}")
+                    print(f"  \u2022 Nombre: {nombre}")
+                    print(f"  \u2022 Topologia: {topologia}")
+                    print(f"  \u2022 VMs: {len(vms_data)}")
+                    pause()
+                    return
+                else:
+                    print(f"{Colors.RED}  ❌ Error al crear slice en la API: {resp.get('error')}{Colors.ENDC}")
+                    print(f"{Colors.YELLOW}  Guardando localmente como respaldo...{Colors.ENDC}")
+                    from shared.data_store import guardar_slice
+                    slice_obj = {
+                        'nombre': nombre,
+                        'topologia': topologia,
+                        'vms': vms_data,
+                        'salida_internet': salida_internet,
+                        'usuario': getattr(auth_manager.current_user, 'username', ''),
+                        'conexion_topologias': conexion_topologias,
+                        'topologias': topologias_json
+                    }
+                    guardar_slice(slice_obj)
+                    print(f"{Colors.GREEN}Slice '{nombre}' guardado localmente{Colors.ENDC}")
+                    pause()
+                    return
             else:
                 print(f"\n{Colors.YELLOW}  Creación cancelada{Colors.ENDC}")
         else:
@@ -247,7 +266,7 @@ def _ver_mis_slices(user):
         slices = []
 
     usuario_actual = getattr(user, 'username', '')
-    slices_usuario = [s for s in slices if s.get('owner') == usuario_actual]
+    slices_usuario = [s for s in slices if s.get('usuario') == usuario_actual]
 
     if not slices_usuario:
         print(f"\n{Colors.YELLOW}  📋 No tienes slices creados{Colors.ENDC}")
@@ -496,8 +515,8 @@ def ver_mis_slices_y_detalles(auth_manager, slice_manager):
     user = auth_manager.current_user
     user_email = getattr(user, 'email', None) or getattr(user, 'username', None)
     user_username = getattr(user, 'username', None) or getattr(user, 'email', None)
-    print(f"[DEBUG] user_email: {user_email}")
-    print(f"[DEBUG] user_username: {user_username}")
+    # print(f"[DEBUG] user_email: {user_email}")
+    # print(f"[DEBUG] user_username: {user_username}")
     print_header(user)
     print(Colors.BOLD + "\n  MIS SLICES" + Colors.ENDC)
     # Cargar mapa de datos extra desde JSON (salida_internet y conexion_remota por VM)
@@ -518,20 +537,12 @@ def ver_mis_slices_y_detalles(auth_manager, slice_manager):
     except Exception:
         db_slices_map = {}
 
-    all_slices = slice_manager.get_slices()
-    def es_mi_slice(s):
-        if isinstance(s, dict):
-            slice_user = s.get('usuario') or s.get('owner') or s.get('user')
-            print(f"[DEBUG] slice_user: {slice_user}")
-            return slice_user == user_email or slice_user == user_username
-        else:
-            slice_owner = (getattr(s, 'owner', None) or 
-                          getattr(s, 'usuario', None) or 
-                          getattr(s, 'user', None))
-            print(f"[DEBUG] slice_owner: {slice_owner}")
-            return slice_owner == user_email or slice_owner == user_username
-    # Mostrar solo los slices del usuario actual (rol cliente)
-    slices = [s for s in slice_manager.get_slices() if es_mi_slice(s)]
+    from core.services.slice_api_service import SliceAPIService
+    api_url = os.getenv('SLICE_API_URL', 'http://localhost:8000')
+    token = getattr(auth_manager, 'api_token', None) or getattr(auth_manager, 'token', None)
+    user_email = getattr(auth_manager.current_user, 'email', None) or getattr(auth_manager.current_user, 'username', None)
+    slice_api = SliceAPIService(api_url, token, user_email)
+    slices = slice_api.list_my_slices()
     if not slices:
         print("\n  No tienes slices creados")
         pause()

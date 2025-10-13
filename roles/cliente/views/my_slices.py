@@ -10,16 +10,16 @@ def view_my_slices(user, slice_manager):
     
     # DEBUG: Ahora SÍ se verán porque están DESPUÉS del header
     all_slices = slice_manager.get_slices()
-    print(f"\n[DEBUG] Total de slices en el sistema: {len(all_slices)}")
-    print(f"[DEBUG] Usuario actual: '{user.username}'")
+    # print(f"\n[DEBUG] Total de slices en el sistema: {len(all_slices)}")
+    # print(f"[DEBUG] Usuario actual: '{user.username}'")
     
     # DEBUG: Ver detalles de cada slice
-    for s in all_slices:
-        print(f"[DEBUG] Slice: {s.name}, Owner: '{s.owner}'")
+    # for s in all_slices:
+    #     print(f"[DEBUG] Slice: {s.name}, Owner: '{s.owner}'")
     
     # Filtrar por owner
     slices = [s for s in all_slices if s.owner == user.username]
-    print(f"[DEBUG] Slices filtrados para este usuario: {len(slices)}")
+    # print(f"[DEBUG] Slices filtrados para este usuario: {len(slices)}")
     
     if not slices:
         print("\n  No tienes slices creados")
