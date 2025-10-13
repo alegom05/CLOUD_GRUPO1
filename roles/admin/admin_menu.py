@@ -70,8 +70,70 @@ def admin_menu(auth_manager, slice_manager, auth_service=None):
         if choice == '1':
             _submenu_ver_slice_admin(auth_manager, slice_manager)
         elif choice == '2':
-            from roles.cliente.cliente_menu import _crear_slice
-            _crear_slice(auth_manager, slice_manager, slice_builder=SliceBuilder)
+            # Crear slice como admin usando el mismo flujo y formato que el cliente
+            try:
+                builder = SliceBuilder(auth_manager.current_user)
+                nombre, topologia, vms_data, salida_internet = builder.start()
+                if nombre and topologia and vms_data:
+                    print(f"{Colors.CYAN}Guardando slice localmente...{Colors.ENDC}")
+                    import json, os
+                    dbfile = 'base_de_datos.json'
+                    if os.path.exists(dbfile):
+                        with open(dbfile, 'r', encoding='utf-8') as f:
+                            data = json.load(f)
+                    else:
+                        data = []
+                    # id_slice incremental
+                    if data:
+                        ids = [int(s.get('id_slice')) for s in data if str(s.get('id_slice')).isdigit()]
+                        new_id = str(max(ids) + 1) if ids else "1"
+                    else:
+                        new_id = "1"
+                    cantidad_vms = str(len(vms_data))
+                    vlans_separadas = str(len(data) + 1)
+                    topologia_nombre = topologia.split('-')[0] if '-' in topologia else topologia
+                    topologia_obj = {
+                        "nombre": topologia_nombre,
+                        "cantidad_vms": cantidad_vms,
+                        "internet": salida_internet,
+                        "vms": []
+                    }
+                    for vm in vms_data:
+                        topologia_obj["vms"].append({
+                            "nombre": vm.get("nombre", ""),
+                            "cores": str(vm.get("cpu", 1)),
+                            "ram": f"{vm.get('memory', 512)}M",
+                            "almacenamiento": f"{vm.get('disk', 1)}G",
+                            "puerto_vnc": "",
+                            "image": vm.get("imagen", ""),
+                            "conexiones_vlans": "",
+                            "acceso": vm.get("conexion_remota", "no"),
+                            "server": ""
+                        })
+                    admin_email = auth_manager.get_current_user_email()
+                    new_slice = {
+                        "id_slice": new_id,
+                        "cantidad_vms": cantidad_vms,
+                        "vlans_separadas": vlans_separadas,
+                        "vlans_usadas": "",
+                        "vncs_separadas": "",
+                        "conexión_topologias": "",
+                        "topologias": [topologia_obj],
+                        "owner": admin_email
+                    }
+                    data.append(new_slice)
+                    with open(dbfile, 'w', encoding='utf-8') as f:
+                        json.dump(data, f, indent=2, ensure_ascii=False)
+                    print(f"{Colors.GREEN}Slice '{nombre}' creado exitosamente{Colors.ENDC}")
+                    print(f"  • ID: {new_id}")
+                    print(f"  • Nombre: {nombre}")
+                    print(f"  • Topología: {topologia}")
+                    print(f"  • VMs: {len(vms_data)}")
+                    pause()
+            except Exception as e:
+                from shared.ui_helpers import show_error
+                show_error(f"Error inesperado: {str(e)}")
+            return
         elif choice == '3':
             _eliminar_todos_los_slices_admin(slice_manager)
         elif choice == '4':
@@ -117,10 +179,10 @@ def _ver_slices_clientes(slice_manager, auth_manager):
         db_path = os.path.join(os.getcwd(), 'base_de_datos.json')
         if os.path.exists(db_path):
             with open(db_path, 'r', encoding='utf-8') as f:
-                db = json.load(f) or {}
-            for item in db.get('slices', []):
+                db = json.load(f) or []
+            for item in db if isinstance(db, list) else db.get('slices', []):
                 sid = item.get('id') or item.get('slice_id')
-                if sid:
+                if sid is not None:
                     db_slices_map[str(sid)] = {
                         'salida_internet': item.get('salida_internet', 'no'),
                         'vms': item.get('vms', [])
@@ -313,10 +375,10 @@ def _ver_mis_slices_admin(auth_manager, slice_manager):
         db_path = os.path.join(os.getcwd(), 'base_de_datos.json')
         if os.path.exists(db_path):
             with open(db_path, 'r', encoding='utf-8') as f:
-                db = json.load(f) or {}
-            for item in db.get('slices', []):
+                db = json.load(f) or []
+            for item in db if isinstance(db, list) else db.get('slices', []):
                 sid = item.get('id') or item.get('slice_id')
-                if sid:
+                if sid is not None:
                     db_slices_map[str(sid)] = {
                         'salida_internet': item.get('salida_internet', 'no'),
                         'vms': item.get('vms', [])
@@ -346,9 +408,9 @@ def _ver_mis_slices_admin(auth_manager, slice_manager):
     print("-" * 48)
     
     for i, s in enumerate(slices_admin, 1):
-        nombre = getattr(s, 'name', getattr(s, 'nombre', 'Sin nombre'))[:24]
+        nombre = getattr(s, 'nombre', getattr(s, 'name', 'Sin nombre'))[:24]
         estado = getattr(s, 'status', getattr(s, 'estado', 'activo'))[:9]
-        sid = getattr(s, 'id', getattr(s, 'slice_id', ''))
+        sid = getattr(s, 'id_slice', getattr(s, 'id', getattr(s, 'slice_id', '')))
         internet = db_slices_map.get(str(sid), {}).get('salida_internet', 'no')
         print(f"{i:<4} {nombre:<25} {estado:<10} {internet:<8}")
     
@@ -395,9 +457,11 @@ def _ver_mis_slices_admin(auth_manager, slice_manager):
     print(f"Salida a internet: {internet}")
     
     vms = getattr(s, 'vms', [])
-    vms_db = db_slices_map.get(str(sid), {}).get('vms', [])
     print(f"VMs: {len(vms)}")
     
+    # Obtener vms_db para el slice seleccionado (si existe en el mapa)
+    sid = getattr(s, 'id_slice', getattr(s, 'id', getattr(s, 'slice_id', '')))
+    vms_db = db_slices_map.get(str(sid), {}).get('vms', [])
     for i, vm in enumerate(vms, 1):
         print(f"  VM {i}:")
         campos = ['nombre', 'flavor', 'cpu', 'memory', 'disk', 'imagen']
@@ -514,22 +578,20 @@ def _ver_todos_slices(slice_api, auth_manager):
     
     try:
         print(f"\n{Colors.CYAN}⏳ Cargando slices...{Colors.ENDC}")
-        
-        # Leer todos los slices desde el archivo local
-        import yaml, os
-        BASE_YAML = os.path.join(os.path.dirname(__file__), '..', '..', 'base_de_datos.yaml')
-        if os.path.exists(BASE_YAML):
-            with open(BASE_YAML, 'r', encoding='utf-8') as f:
-                data = yaml.safe_load(f) or {}
-            slices = data.get('slices', [])
+        # Leer todos los slices desde base_de_datos.json
+        import json, os
+        BASE_JSON = os.path.join(os.path.dirname(__file__), '..', '..', 'base_de_datos.json')
+        if os.path.exists(BASE_JSON):
+            with open(BASE_JSON, 'r', encoding='utf-8') as f:
+                data = json.load(f) or []
+            slices = data if isinstance(data, list) else data.get('slices', [])
         else:
             slices = []
-        
+
         if not slices:
             print(f"\n{Colors.YELLOW}  � No hay slices en el sistema{Colors.ENDC}")
         else:
             print(f"\n{Colors.GREEN}  Total de slices: {len(slices)}{Colors.ENDC}\n")
-            
             for i, s in enumerate(slices, 1):
                 nombre = s.get('nombre', s.get('nombre_slice', 'Sin nombre'))
                 usuario = s.get('usuario', 'N/A')
@@ -541,11 +603,9 @@ def _ver_todos_slices(slice_api, auth_manager):
                 print(f"      VMs: {len(s.get('vms', []))}")
                 print(f"      Estado: {s.get('estado', 'activo')}")
                 print()
-    
     except Exception as e:
         from shared.ui_helpers import show_error
         show_error(f"Error al cargar slices: {str(e)}")
-    
     pause()
 
 
@@ -619,11 +679,10 @@ def _crear_slice_admin(slice_api, auth_manager):
             slice_id = 'local'
             print(f"{Colors.CYAN}📁 Guardando slice localmente...{Colors.ENDC}")
             
-            # Guardar slice y VMs en archivos SIEMPRE
+            # Guardar slice y VMs en archivos SIEMPRE (solo JSON)
             try:
                 from shared.data_store import guardar_slice, guardar_vms
                 # Guardar slice primero para obtener el id y vlan reales
-                # Usar email como owner/usuario para consistencia
                 user_email = getattr(auth_manager.current_user, 'email', None)
                 user_owner = user_email if user_email else getattr(auth_manager.current_user, 'username', '')
                 slice_obj = {
@@ -636,22 +695,8 @@ def _crear_slice_admin(slice_api, auth_manager):
                 }
                 guardar_slice(slice_obj)
 
-                # Leer el valor real de vlan (autoincremental) desde base_de_datos.yaml
-                import yaml, os
-                BASE_YAML = os.path.join(os.path.dirname(__file__), '..', '..', 'base_de_datos.yaml')
-                with open(BASE_YAML, 'r', encoding='utf-8') as f:
-                    data = yaml.safe_load(f) or {}
-                vlan_real = None
-                if 'slices' in data and data['slices']:
-                    for s in reversed(data['slices']):
-                        if s.get('nombre') == nombre and s.get('usuario') == getattr(auth_manager.current_user, 'username', ''):
-                            vlan_real = s.get('vlan')
-                            break
-                if vlan_real is None:
-                    vlan_real = vlan if isinstance(vlan, int) else 1
-
                 # Leer cuántas VMs existen ya en vms.json para calcular puerto_vnc
-                import json
+                import json, os
                 VMS_JSON = os.path.join(os.path.dirname(__file__), '..', '..', 'vms.json')
                 if os.path.exists(VMS_JSON):
                     with open(VMS_JSON, 'r', encoding='utf-8') as f:
@@ -663,7 +708,7 @@ def _crear_slice_admin(slice_api, auth_manager):
                 vms_guardar = []
                 for idx, vm in enumerate(vms_data):
                     num_vm = idx + 1
-                    ip = f"10.7.{vlan_real}.{num_vm+1}"
+                    ip = f"10.7.1.{num_vm+1}"
                     puerto_vnc = 5900 + total_vms + num_vm
                     vm_dict = dict(vm)
                     vm_dict['usuario'] = getattr(auth_manager.current_user, 'username', '')
@@ -673,9 +718,9 @@ def _crear_slice_admin(slice_api, auth_manager):
                     vms_guardar.append(vm_dict)
 
                 guardar_vms(vms_guardar)
-                print(f"{Colors.OKGREEN}✔ Slice y VMs guardados correctamente en base_de_datos.yaml y vms.json{Colors.ENDC}")
+                print(f"{Colors.OKGREEN}✔ Slice y VMs guardados correctamente en base_de_datos.json y vms.json{Colors.ENDC}")
             except Exception as e:
-                print(f"{Colors.RED}  [WARN] No se pudo guardar en base_de_datos.yaml o vms.json: {e}{Colors.ENDC}")
+                print(f"{Colors.RED}  [WARN] No se pudo guardar en base_de_datos.json o vms.json: {e}{Colors.ENDC}")
         else:
             print(f"\n{Colors.YELLOW}  Creación cancelada{Colors.ENDC}")
     
@@ -716,13 +761,13 @@ def _eliminar_slice_admin(slice_api, auth_manager):
         return
     
     try:
-        # Leer todos los slices (de admin y usuarios)
+        # Leer todos los slices (de admin y usuarios) desde base_de_datos.json
         import json, os
         BASE_JSON = os.path.join(os.path.dirname(__file__), '..', '..', 'base_de_datos.json')
         if os.path.exists(BASE_JSON):
             with open(BASE_JSON, 'r', encoding='utf-8') as f:
-                data = json.load(f) or {}
-            slices = data.get('slices', [])
+                data = json.load(f) or []
+            slices = data if isinstance(data, list) else data.get('slices', [])
         else:
             slices = []
 
@@ -762,9 +807,9 @@ def _eliminar_slice_admin(slice_api, auth_manager):
                     print(f"\n{Colors.CYAN}⏳ Eliminando slice...{Colors.ENDC}")
                     # Eliminar slice del archivo
                     slices = [s for s in slices if s.get('id') != slice_seleccionado.get('id')]
-                    data['slices'] = slices
+                    # Guardar la lista actualizada en base_de_datos.json
                     with open(BASE_JSON, 'w', encoding='utf-8') as f:
-                        json.dump(data, f, indent=2, ensure_ascii=False)
+                        json.dump(slices, f, indent=2, ensure_ascii=False)
                     show_success("Slice eliminado exitosamente por Admin")
                 else:
                     print(f"\n{Colors.YELLOW}  Eliminación cancelada{Colors.ENDC}")
@@ -797,41 +842,37 @@ def _ver_detalles_slice(slice_api, auth_manager):
     
     slice_id = input(f"\n{Colors.CYAN}  ID del slice: {Colors.ENDC}").strip()
     
-    if slice_id:
-        try:
-            detalles = slice_api.get_slice_details(slice_id)
-            if detalles:
-                print(f"\n{Colors.YELLOW}Nombre:{Colors.ENDC} {detalles['nombre_slice']}")
-                print(f"{Colors.YELLOW}VLAN:{Colors.ENDC} {detalles['vlan']}")
-                print(f"{Colors.YELLOW}Topología:{Colors.ENDC} {detalles['topologia']}")
-                print(f"\n{Colors.YELLOW}VMs:{Colors.ENDC}")
-                for vm in detalles.get('vms', []):
-                    print(f"  • {vm['nombre']} - IP: {vm['ip']}")
-        except Exception as e:
-            from shared.ui_helpers import show_error
-            show_error(f"Error: {str(e)}")
-    
+    try:
+        print(f"\n{Colors.CYAN}⏳ Cargando slices...{Colors.ENDC}")
+        # Leer todos los slices desde base_de_datos.json
+        import json, os
+        BASE_JSON = os.path.join(os.path.dirname(__file__), '..', '..', 'base_de_datos.json')
+        if os.path.exists(BASE_JSON):
+            with open(BASE_JSON, 'r', encoding='utf-8') as f:
+                data = json.load(f) or []
+            slices = data if isinstance(data, list) else data.get('slices', [])
+        else:
+            slices = []
+
+        if not slices:
+            print(f"\n{Colors.YELLOW}  � No hay slices en el sistema{Colors.ENDC}")
+        else:
+            print(f"\n{Colors.GREEN}  Total de slices: {len(slices)}{Colors.ENDC}\n")
+            for i, s in enumerate(slices, 1):
+                nombre = s.get('nombre', s.get('nombre_slice', 'Sin nombre'))
+                usuario = s.get('usuario', 'N/A')
+                print(f"{Colors.YELLOW}  [{i}] {nombre}{Colors.ENDC}")
+                print(f"      Usuario: {Colors.CYAN}{usuario}{Colors.ENDC}")
+                print(f"      ID: {Colors.CYAN}{s.get('id', 'N/A')}{Colors.ENDC}")
+                print(f"      VLAN: {Colors.GREEN}{s.get('vlan', 'N/A')}{Colors.ENDC}")
+                print(f"      Topología: {s.get('topologia', 'N/A')}")
+                print(f"      VMs: {len(s.get('vms', []))}")
+                print(f"      Estado: {s.get('estado', 'activo')}")
+                print()
+    except Exception as e:
+        from shared.ui_helpers import show_error
+        show_error(f"Error al cargar slices: {str(e)}")
     pause()
-
-
-def _mostrar_estadisticas(slice_api, auth_manager):
-    """Mostrar estadísticas del sistema"""
-    if not auth_manager.has_permission("monitor_all"):
-        print(f"\n{Colors.RED}  ❌ No tiene permisos{Colors.ENDC}")
-        pause()
-        return
-    
-    print_header(auth_manager.current_user)
-    print(Colors.BOLD + "\n  ESTADÍSTICAS DEL SISTEMA" + Colors.ENDC)
-    print("  " + "="*60)
-    
-    print(f"\n{Colors.YELLOW}💡 Implementar endpoint de estadísticas en el backend{Colors.ENDC}")
-    print(f"{Colors.CYAN}Información sugerida:{Colors.ENDC}")
-    print("  • Total de slices activos")
-    print("  • Total de VMs")
-    print("  • Recursos utilizados")
-    print("  • Slices por usuario")
-    print("  • Topologías más usadas")
     
     pause()
 

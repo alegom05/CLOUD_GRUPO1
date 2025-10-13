@@ -72,7 +72,8 @@ class SliceBuilder:
                 self._mostrar_resumen_detallado()
             elif choice == '6':
                 if self._validar_configuracion():
-                    return self._generar_datos_slice()
+                    datos_slice = self._generar_datos_slice()
+                    return datos_slice
                 else:
                     show_error("Configuración incompleta")
                     pause()
@@ -149,17 +150,18 @@ class SliceBuilder:
         while True:
             num_vm = len(self.vms) + 1
             print(f"\n  VM {num_vm}:")
-            
             # Seleccionar flavor
             flavor = select_flavor()
             specs = get_flavor_specs(flavor)
-            
             print("    Seleccionar imagen:")
-            print("      1. Cirros (cirros-0.5.1-x86_64-disk.img)")
-            print("      2. Ubuntu (ubuntu-22.04-server-cloudimg-amd64.img)")
+            print("      1. cirros-0.5.1-x86_64-disk.img")
+            print("      2. ubuntu-18.04-minimal-cloudimg-amd64.img")
+            print("      3. generic_alpine-3.20.0-x86_64-bios-cloudinit-r0.qcow2")
             img_opt = input("      Opción [1]: ").strip()
             if img_opt == '2':
-                imagen = "ubuntu-22.04-server-cloudimg-amd64.img"
+                imagen = "ubuntu-18.04-minimal-cloudimg-amd64.img"
+            elif img_opt == '3':
+                imagen = "generic_alpine-3.20.0-x86_64-bios-cloudinit-r0.qcow2"
             else:
                 imagen = "cirros-0.5.1-x86_64-disk.img"
             vm_data = {
@@ -170,10 +172,8 @@ class SliceBuilder:
                 "disk": specs['disk'],
                 "imagen": imagen
             }
-            
             self.vms.append(vm_data)
             show_success(f"VM{num_vm} agregada ({flavor})")
-            
             if not confirm_action("¿Agregar otra VM?"):
                 break
     
@@ -228,17 +228,18 @@ class SliceBuilder:
         for i in range(num_vms):
             num_vm = inicio_vm + i
             print(f"\n  Seleccionando flavor para la VM {num_vm}:")
-            
             # Solicitar flavor para cada VM de manera individual
             flavor = select_flavor()
             specs = get_flavor_specs(flavor)
-
             print("    Seleccionar imagen:")
-            print("      1. Cirros (cirros-0.5.1-x86_64-disk.img)")
-            print("      2. Ubuntu (ubuntu-22.04-server-cloudimg-amd64.img)")
+            print("      1. cirros-0.5.1-x86_64-disk.img")
+            print("      2. ubuntu-18.04-minimal-cloudimg-amd64.img")
+            print("      3. generic_alpine-3.20.0-x86_64-bios-cloudinit-r0.qcow2")
             img_opt = input("      Opción [1]: ").strip()
             if img_opt == '2':
-                imagen = "ubuntu-22.04-server-cloudimg-amd64.img"
+                imagen = "ubuntu-18.04-minimal-cloudimg-amd64.img"
+            elif img_opt == '3':
+                imagen = "generic_alpine-3.20.0-x86_64-bios-cloudinit-r0.qcow2"
             else:
                 imagen = "cirros-0.5.1-x86_64-disk.img"
             vm_data = {
@@ -251,7 +252,6 @@ class SliceBuilder:
             }
             self.vms.append(vm_data)
             vms_indices.append(len(self.vms) - 1)
-
             show_success(f"VM{num_vm} agregada ({flavor})")
 
         # Guardar topología

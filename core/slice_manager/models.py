@@ -54,7 +54,9 @@ class VM:
     ip: str = None
     topology_group: int = 0  # Para identificar a qué sub-topología pertenece
     connections: List[str] = field(default_factory=list)  # IDs de VMs conectadas
-    
+    conexion_remota: str = None  # Nuevo campo opcional
+    imagen: str = None  # Nuevo campo opcional
+
     def to_dict(self):
         return asdict(self)
 
@@ -82,7 +84,8 @@ class Slice:
     created_at: str
     status: str = "creating"
     topology_segments: List[TopologySegment] = field(default_factory=list)
-    
+    salida_internet: str = None  # Nuevo campo opcional
+
     def to_dict(self):
         if hasattr(self.topology, 'value'):
             topology_val = self.topology.value
@@ -96,5 +99,6 @@ class Slice:
             'owner': self.owner,
             'created_at': self.created_at,
             'status': self.status,
-            'topology_segments': [seg.to_dict() for seg in self.topology_segments]
+            'topology_segments': [seg.to_dict() for seg in self.topology_segments],
+            'salida_internet': self.salida_internet
         }

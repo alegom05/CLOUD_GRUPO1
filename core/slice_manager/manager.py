@@ -13,95 +13,93 @@ class SliceManager:
     
     def _load_slices(self) -> List[Slice]:
         slices = []
-        
-        # Cargar solo desde base_de_datos.json
         if os.path.exists(self.database_file):
             try:
                 with open(self.database_file, 'r', encoding='utf-8') as f:
                     json_data = json.load(f)
-                    if json_data and 'slices' in json_data:
-                        for item in json_data['slices']:
-                            slice_id = str(item.get('id', ''))
-                            if slice_id:
-                                # Convertir diccionario JSON a objeto Slice
-                                slice_dict = {
-                                    'id': slice_id,
-                                    'name': item.get('nombre', ''),
-                                    'topology': TopologyType.LINEAR,  # Default
-                                    'owner': item.get('usuario', ''),
-                                    'created_at': datetime.now(),
-                                    'status': item.get('estado', 'activo'),
-                                    'vms': []
-                                }
-                                
-                                # Convertir VMs
-                                if 'vms' in item:
-                                    for vm_data in item['vms']:
-                                        vm = VM(
-                                            id=vm_data.get('nombre', ''),
-                                            name=vm_data.get('nombre', ''),
-                                            cpu=vm_data.get('cpu', 1),
-                                            memory=vm_data.get('memory', 512),
-                                            disk=vm_data.get('disk', 1),
-                                            flavor=vm_data.get('flavor', 'f1')
-                                        )
-                                        slice_dict['vms'].append(vm)
-                                
-                                slice_obj = Slice(**slice_dict)
-                                slices.append(slice_obj)
-                            
+                    if json_data:
+                        for item in json_data:
+                            slice_id = item.get('id_slice', '')
+                            topologias = item.get('topologias', [])
+                            # Tomar la primera topología como principal
+                            topo = topologias[0] if topologias else {}
+                            vms = []
+                            for vm_data in topo.get('vms', []):
+                                # Permitir valores decimales en almacenamiento
+                                almacenamiento_str = vm_data.get('almacenamiento', '1G').replace('G','')
+                                try:
+                                    disk_val = int(float(almacenamiento_str))
+                                except Exception:
+                                    disk_val = 1
+                                vm = VM(
+                                    id=vm_data.get('nombre', ''),
+                                    name=vm_data.get('nombre', ''),
+                                    cpu=int(vm_data.get('cores', '1')),
+                                    memory=int(vm_data.get('ram', '512M').replace('M','')),
+                                    disk=disk_val,
+                                    flavor=vm_data.get('image', 'f1'),
+                                    conexion_remota=vm_data.get('acceso', 'no'),
+                                    imagen=vm_data.get('image', '')
+                                )
+                                vms.append(vm)
+                            slice_obj = Slice(
+                                id=slice_id,
+                                name=slice_id,
+                                topology=topo.get('nombre', 'lineal'),
+                                vms=vms,
+                                owner=item.get('owner', ''),
+                                created_at=datetime.now(),
+                                status='activo',
+                                salida_internet=topo.get('internet', 'no')
+                            )
+                            slices.append(slice_obj)
             except Exception as e:
                 print(f"Error loading database JSON slices: {e}")
-        
         print(f"[DEBUG] Cargados {len(slices)} slices desde {self.database_file}")
         return slices
     
     def _save_slices(self):
-        """Guardar slices solo en base_de_datos.json"""
-        # Cargar estructura existente de base_de_datos.json
-        database_data = {}
-        if os.path.exists(self.database_file):
-            try:
-                with open(self.database_file, 'r', encoding='utf-8') as f:
-                    database_data = json.load(f)
-            except:
-                database_data = {}
-        
-        if 'slices' not in database_data:
-            database_data['slices'] = []
-        
-        # Convertir slices al formato de base_de_datos.json
-        database_slices = []
-        for slice in self.slices:
-            db_slice = {
-                'id': slice.id,
-                'nombre': slice.name,
-                'topologia': slice.topology.value if hasattr(slice.topology, 'value') else str(slice.topology),
-                'usuario': slice.owner,
-                'estado': 'activo' if slice.status == 'creating' else slice.status,
-                'vlan': len(database_slices) + 1,  # Generar VLAN incremental
-                'vms': []
-            }
-            
-            # Convertir VMs al formato de base_de_datos.json
+        """Guardar todos los slices en base_de_datos.json en el formato ejemplo (lista de objetos)"""
+        import uuid
+        data = []
+        for idx, slice in enumerate(self.slices):
+            vms_data = []
             for vm in slice.vms:
-                db_vm = {
-                    'nombre': vm.name,
-                    'cpu': vm.cpu,
-                    'memory': vm.memory,
-                    'disk': vm.disk,
-                    'flavor': getattr(vm, 'flavor', 'f1')
-                }
-                db_slice['vms'].append(db_vm)
-            
-            database_slices.append(db_slice)
-        
-        database_data['slices'] = database_slices
-        
+                vms_data.append({
+                    "nombre": getattr(vm, 'name', ''),
+                    "cores": str(getattr(vm, 'cpu', 1)),
+                    "ram": f"{getattr(vm, 'memory', 512)}M",
+                    "almacenamiento": f"{getattr(vm, 'disk', 1)}G",
+                    "puerto_vnc": "",
+                    "image": getattr(vm, 'imagen', ''),
+                    "conexiones_vlans": "",
+                    "acceso": getattr(vm, 'conexion_remota', 'no'),
+                    "server": ""
+                })
+            cantidad_vms = str(len(vms_data))
+            topologia_nombre = getattr(slice, 'topology', 'lineal')
+            if hasattr(topologia_nombre, 'value'):
+                topologia_nombre = topologia_nombre.value
+            salida_internet = getattr(slice, 'salida_internet', 'no')
+            topologia_obj = {
+                "nombre": topologia_nombre,
+                "cantidad_vms": cantidad_vms,
+                "internet": salida_internet,
+                "vms": vms_data
+            }
+            new_slice = {
+                "id_slice": "",
+                "cantidad_vms": cantidad_vms,
+                "vlans_separadas": str(idx + 1),
+                "vlans_usadas": "",
+                "vncs_separadas": "",
+                "conexión_topologias": "",
+                "topologias": [topologia_obj]
+            }
+            data.append(new_slice)
         with open(self.database_file, 'w', encoding='utf-8') as f:
-            json.dump(database_data, f, indent=2, ensure_ascii=False)
-        
-        print(f"[DEBUG] Guardados {len(database_slices)} slices en {self.database_file}")
+            json.dump(data, f, indent=2, ensure_ascii=False)
+        print(f"[DEBUG] Guardados {len(data)} slices en {self.database_file}")
     
     def create_slice(self, slice_data: SliceCreate, owner: str = "cliente", vms_override: list = None) -> Slice:
         """Crear slice de forma síncrona"""
