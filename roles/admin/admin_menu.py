@@ -30,7 +30,7 @@ def admin_menu(auth_manager, slice_manager, auth_service=None):
         return
     
     # Configurar URL de la API
-    api_url = os.getenv('SLICE_API_URL', 'http://localhost:8000')
+    api_url = os.getenv('SLICE_API_URL', 'https://localhost:8443')
     
     # Obtener email del usuario
     user_email = auth_manager.get_current_user_email()
@@ -63,6 +63,7 @@ def admin_menu(auth_manager, slice_manager, auth_service=None):
         print("  2. Crear Slice")
         print("  3. Eliminar Slice")
         print("  4. Servicio de Monitoreo")
+        print("  5. Pausar/Reanudar Slice")
         print(Colors.RED + "\n  0. Cerrar Sesión" + Colors.ENDC)
 
         choice = input("\nSeleccione opción: ")
@@ -78,24 +79,67 @@ def admin_menu(auth_manager, slice_manager, auth_service=None):
                 if isinstance(datos, tuple) and len(datos) == 6:
                     nombre, topologia, vms_data, salida_internet, conexion_topologias, topologias_json = datos
                     if nombre and topologia and vms_data and topologias_json:
-                        print(f"{Colors.CYAN}Guardando slice localmente...{Colors.ENDC}")
-                        from shared.data_store import guardar_slice
-                        admin_email = auth_manager.get_current_user_email()
-                        slice_obj = {
-                            'nombre': nombre,
-                            'topologia': topologia,
-                            'vms': vms_data,
-                            'salida_internet': salida_internet,
-                            'usuario': admin_email,
-                            'conexión_topologias': conexion_topologias,
-                            'topologias': topologias_json
+                        # Crear slice en la API remota
+                        print(f"{Colors.CYAN}⏳ Enviando slice a la API remota...{Colors.ENDC}")
+                        
+                        # Preparar solicitud_json para la API
+                        solicitud_json = {
+                            "cantidad_vms": str(len(vms_data)),
+                            "vlans_separadas": "",
+                            "vlans_usadas": "",
+                            "vncs_separadas": "",
+                            "conexion_topologias": conexion_topologias,
+                            "topologias": topologias_json
                         }
-                        # print(f"[DEBUG] Diccionario a guardar: {slice_obj}")
-                        guardar_slice(slice_obj)
-                        print(f"{Colors.GREEN}Slice '{nombre}' creado exitosamente{Colors.ENDC}")
-                        print(f"  • Nombre: {nombre}")
-                        print(f"  • Topología: {topologia}")
-                        print(f"  • VMs: {len(vms_data)}")
+                        
+                        # Obtener token y configurar API
+                        token = getattr(auth_manager, 'api_token', None) or getattr(auth_manager, 'token', None)
+                        if token:
+                            from core.services.slice_api_service import SliceAPIService
+                            api_url = os.getenv('SLICE_API_URL', 'https://localhost:8443')
+                            admin_email = auth_manager.get_current_user_email()
+                            slice_api = SliceAPIService(api_url, token, admin_email)
+                            
+                            # Crear slice en la API
+                            resultado = slice_api.create_slice_api(nombre, solicitud_json)
+                            
+                            if resultado.get('ok'):
+                                print(f"{Colors.GREEN}✅ Slice '{nombre}' creado exitosamente en la API remota{Colors.ENDC}")
+                                print(f"  • Nombre: {nombre}")
+                                print(f"  • Topología: {topologia}")
+                                print(f"  • VMs: {len(vms_data)}")
+                            else:
+                                print(f"{Colors.YELLOW}⚠️  Advertencia: Error al crear en API remota: {resultado.get('error')}{Colors.ENDC}")
+                                print(f"{Colors.CYAN}Guardando slice localmente como respaldo...{Colors.ENDC}")
+                                from shared.data_store import guardar_slice
+                                slice_obj = {
+                                    'nombre': nombre,
+                                    'topologia': topologia,
+                                    'vms': vms_data,
+                                    'salida_internet': salida_internet,
+                                    'usuario': admin_email,
+                                    'conexión_topologias': conexion_topologias,
+                                    'topologias': topologias_json
+                                }
+                                guardar_slice(slice_obj)
+                                print(f"{Colors.GREEN}Slice guardado localmente{Colors.ENDC}")
+                        else:
+                            print(f"{Colors.RED}[ERROR] No se pudo obtener token de autenticación{Colors.ENDC}")
+                            print(f"{Colors.CYAN}Guardando slice localmente...{Colors.ENDC}")
+                            from shared.data_store import guardar_slice
+                            admin_email = auth_manager.get_current_user_email()
+                            slice_obj = {
+                                'nombre': nombre,
+                                'topologia': topologia,
+                                'vms': vms_data,
+                                'salida_internet': salida_internet,
+                                'usuario': admin_email,
+                                'conexión_topologias': conexion_topologias,
+                                'topologias': topologias_json
+                            }
+                            guardar_slice(slice_obj)
+                            print(f"{Colors.GREEN}Slice guardado localmente{Colors.ENDC}")
+                        
                         pause()
                         return
                     else:
@@ -111,6 +155,8 @@ def admin_menu(auth_manager, slice_manager, auth_service=None):
             _eliminar_todos_los_slices_admin(slice_manager)
         elif choice == '4':
             _servicio_monitoreo()
+        elif choice == '5':
+            _pausar_reanudar_slice_admin(auth_manager, slice_manager)
         elif choice == '0':
             _cerrar_sesion(auth_manager, auth_service)
             break
@@ -119,150 +165,223 @@ def admin_menu(auth_manager, slice_manager, auth_service=None):
             pause()
 
 def _submenu_ver_slice_admin(auth_manager, slice_manager):
-    from shared.ui_helpers import pause
-    while True:
-        print("\n  1. Ver slices de Clientes")
-        print("  2. Ver mis slices")
-        print("  0. Volver")
-        op = input("Seleccione opción: ").strip()
-        if op == '1':
-            _ver_slices_clientes(slice_manager, auth_manager)
-        elif op == '2':
-            _ver_mis_slices_admin(auth_manager, slice_manager)
-        elif op == '0':
-            return
-        else:
-            print("Opción inválida"); pause()
+    """Menú para ver slices"""
+    _ver_slices_clientes(slice_manager, auth_manager)
 
 def _ver_slices_clientes(slice_manager, auth_manager):
-    """Ver solo slices de clientes (NO del admin actual)"""
+    """
+    Ver TODOS los slices del sistema (de todos los usuarios, incluido el admin)
+    Usa la API remota para obtener todos los slices
+    
+    Muestra: ID, Nombre del Slice, Estado, Fecha/Hora
+    """
     from shared.ui_helpers import print_header, pause
     from shared.colors import Colors
+    import os
+    
     print_header(None)
-    print(Colors.BOLD + "\n  SLICES DE CLIENTES" + Colors.ENDC)
-    print("  " + "="*50)
-    from core.services.slice_api_service import SliceAPIService
-    api_url = os.getenv('SLICE_API_URL', 'http://localhost:8000')
+    print(Colors.BOLD + "\n  TODOS LOS SLICES DEL SISTEMA" + Colors.ENDC)
+    print("  " + "="*90)
+    
+    # Obtener token JWT
     token = getattr(auth_manager, 'api_token', None) or getattr(auth_manager, 'token', None)
+    if not token:
+        print(f"\n{Colors.RED}[ERROR] No se pudo obtener token de autenticación{Colors.ENDC}")
+        pause()
+        return
+    
+    # Configurar servicio API
+    from core.services.slice_api_service import SliceAPIService
+    api_url = os.getenv('SLICE_API_URL', 'https://localhost:8443')
     user_email = auth_manager.get_current_user_email()
     slice_api = SliceAPIService(api_url, token, user_email)
-    slices = slice_api.list_all_slices()
-
-    # Cargar mapa desde base_de_datos.json para salida_internet y conexion_remota
-    db_slices_map = {}
-    try:
-        import json
-        db_path = os.path.join(os.getcwd(), 'base_de_datos.json')
-        if os.path.exists(db_path):
-            with open(db_path, 'r', encoding='utf-8') as f:
-                db = json.load(f) or []
-            for item in db if isinstance(db, list) else db.get('slices', []):
-                sid = item.get('id') or item.get('slice_id')
-                if sid is not None:
-                    db_slices_map[str(sid)] = {
-                        'salida_internet': item.get('salida_internet', 'no'),
-                        'vms': item.get('vms', [])
-                    }
-    except Exception:
-        db_slices_map = {}
     
-    # Obtener email del admin actual
-    admin_email = auth_manager.get_current_user_email()
+    # Obtener TODOS los slices desde la API
+    print(f"\n{Colors.CYAN}⏳ Cargando slices desde el servidor remoto...{Colors.ENDC}")
+    all_slices = slice_api.list_all_slices()
     
-    # Solo mostrar slices que NO sean del admin actual
-    clientes = []
-    for s in slices:
-        slice_owner = getattr(s, 'owner', getattr(s, 'usuario', ''))
-        # Excluir slices del admin actual
-        if slice_owner.lower() != admin_email.lower():
-            clientes.append(s)
-    
-    if not clientes:
-        print(f"\n{Colors.YELLOW}  No hay slices de clientes{Colors.ENDC}")
+    if not all_slices:
+        print(f"\n{Colors.YELLOW}  No hay slices en el sistema{Colors.ENDC}")
         pause()
         return
     
-    print(f"\n{Colors.GREEN}  Total de slices de clientes: {len(clientes)}{Colors.ENDC}\n")
+    print(f"\n{Colors.GREEN}  Total de slices: {len(all_slices)}{Colors.ENDC}\n")
     
-    # Mostrar tabla (incluye Internet)
-    print(f"{Colors.CYAN}{'N°':<4} {'Nombre del Slice':<25} {'Usuario/Email':<35} {'Estado':<10} {'Internet':<8}{Colors.ENDC}")
-    print("-" * 83)
+    # Mostrar tabla con las columnas: ID, Nombre del Slice, Usuario, Estado, Fecha/Hora
+    print(f"{Colors.CYAN}{'ID':<8} {'Nombre del Slice':<35} {'Usuario':<25} {'Estado':<15} {'Fecha/Hora':<20}{Colors.ENDC}")
+    print("-" * 105)
     
-    for i, s in enumerate(clientes, 1):
-        nombre = getattr(s, 'name', getattr(s, 'nombre', ''))
-        if not nombre or nombre == '' or nombre == getattr(s, 'id', None):
-            nombre = getattr(s, 'topology', 'sin nombre')
-        nombre = str(nombre)[:24]
-        usuario = getattr(s, 'owner', getattr(s, 'usuario', 'N/A'))[:34]
-        estado = getattr(s, 'status', getattr(s, 'estado', 'activo'))[:9]
-        sid = getattr(s, 'id', getattr(s, 'slice_id', ''))
-        internet = db_slices_map.get(str(sid), {}).get('salida_internet', 'no')
-        print(f"{i:<4} {nombre:<25} {usuario:<35} {estado:<10} {internet:<8}")
+    for s in all_slices:
+        slice_id = str(s.get('id', 'N/A'))[:7]
+        nombre = str(s.get('nombre_slice', 'Sin nombre'))[:34]
+        usuario = str(s.get('usuario', 'N/A'))[:24]
+        estado = str(s.get('estado', 'plantilla'))[:14]
+        timestamp = str(s.get('timestamp', 'N/A'))[:19]
+        
+        print(f"{slice_id:<8} {nombre:<35} {usuario:<25} {estado:<15} {timestamp:<20}")
     
-    print("\nSeleccione el número de un slice para ver detalles, o 0 para volver:", end=" ")
-    sel = input().strip()
+    # Preguntar si desea ver detalles de algún slice
+    print(f"\n{Colors.CYAN}¿Deseas ver los detalles de algún slice? (s/n): {Colors.ENDC}", end="")
+    respuesta = input().strip().lower()
     
-    if not sel.isdigit() or int(sel) == 0:
-        return
-    
-    idx = int(sel) - 1
-    if idx < 0 or idx >= len(clientes):
-        print(f"{Colors.RED}Selección inválida.{Colors.ENDC}")
-        pause()
-        return
-    
-    s = clientes[idx]
-
-    # Helper para topologías
-    def clean_topo_name(val):
-        val_str = str(val)
-        if '.' in val_str:
-            val_str = val_str.split('.')[-1]
-        return val_str.capitalize()
-    def get_all_topologies(slice_obj):
-        topo_raw = getattr(slice_obj, 'topologia', None) or getattr(slice_obj, 'topology', None) or ''
-        if hasattr(slice_obj, 'topology_segments') and getattr(slice_obj, 'topology_segments', None):
-            return [clean_topo_name(getattr(seg.type, 'value', str(seg.type))) for seg in slice_obj.topology_segments]
-        elif isinstance(topo_raw, str) and '+' in topo_raw:
-            return [clean_topo_name(segment.split('-')[0]) for segment in topo_raw.split('+')]
-        elif isinstance(topo_raw, str) and '-' in topo_raw:
-            return [clean_topo_name(topo_raw.split('-')[0])]
-        elif topo_raw:
-            return [clean_topo_name(topo_raw)]
+    if respuesta == 's':
+        slice_id_input = input(f"\n{Colors.CYAN}Ingresa el ID del slice: {Colors.ENDC}").strip()
+        
+        # Buscar el slice por ID
+        slice_encontrado = None
+        for s in all_slices:
+            if str(s.get('id')) == slice_id_input:
+                slice_encontrado = s
+                break
+        
+        if slice_encontrado:
+            _mostrar_detalles_slice_admin(slice_encontrado)
         else:
-            return []
-
-    # Mostrar detalles del slice seleccionado
-    print("\n" + Colors.BOLD + f"DETALLES DEL SLICE: {getattr(s, 'name', getattr(s, 'nombre', ''))}" + Colors.ENDC)
-    print(f"Usuario/Email: {getattr(s, 'owner', getattr(s, 'usuario', 'N/A'))}")
-    estado = getattr(s, 'status', getattr(s, 'estado', 'activo'))
-    sid = getattr(s, 'id', getattr(s, 'slice_id', ''))
-    internet = db_slices_map.get(str(sid), {}).get('salida_internet', 'no')
-    print(f"Topologías: {', '.join(get_all_topologies(s))}")
-    print(f"Estado: {estado}")
-    print(f"Salida a internet: {internet}")
-    
-    vms = getattr(s, 'vms', [])
-    vms_db = db_slices_map.get(str(sid), {}).get('vms', [])
-    print(f"VMs: {len(vms)}")
-    
-    for i, vm in enumerate(vms, 1):
-        print(f"  VM {i}:")
-        campos = ['nombre', 'flavor', 'cpu', 'memory', 'disk', 'imagen']
-        for k in campos:
-            val = getattr(vm, k, None) if not isinstance(vm, dict) else vm.get(k, None)
-            if val is not None:
-                print(f"    {k}: {val}")
-        if isinstance(vm, dict):
-            conexion = vm.get('conexion_remota', 'no')
-        else:
-            conexion = 'no'
-            if 0 <= (i - 1) < len(vms_db):
-                conexion = vms_db[i - 1].get('conexion_remota', 'no')
-        print(f"    conexion_remota: {conexion}")
+            print(f"\n{Colors.RED}❌ No se encontró un slice con ID: {slice_id_input}{Colors.ENDC}")
     
     pause()
-    return
+
+
+def _mostrar_detalles_slice_admin(slice_data):
+    """Muestra los detalles completos de un slice incluyendo VMs y topologías"""
+    from shared.colors import Colors
+    from shared.ui_helpers import pause
+    import json
+    
+    print(f"\n{Colors.BOLD}{Colors.GREEN}{'='*80}{Colors.ENDC}")
+    print(f"{Colors.BOLD}  DETALLES DEL SLICE{Colors.ENDC}")
+    print(f"{Colors.GREEN}{'='*80}{Colors.ENDC}")
+    
+    # Información básica del slice
+    print(f"\n{Colors.CYAN}📋 Información General:{Colors.ENDC}")
+    print(f"  ID:            {slice_data.get('id', 'N/A')}")
+    print(f"  Nombre:        {slice_data.get('nombre_slice', 'Sin nombre')}")
+    print(f"  Usuario:       {slice_data.get('usuario', 'N/A')}")
+    print(f"  Estado:        {slice_data.get('estado', 'N/A')}")
+    print(f"  Fecha/Hora:    {slice_data.get('timestamp', 'N/A')}")
+    
+    # Mostrar VMs si existen
+    vms_data = slice_data.get('vms')
+    if vms_data:
+        print(f"\n{Colors.CYAN}🖥️  Máquinas Virtuales:{Colors.ENDC}")
+        
+        # Si vms es un string JSON, parsearlo
+        if isinstance(vms_data, str):
+            try:
+                vms_data = json.loads(vms_data)
+            except:
+                print(f"  {Colors.RED}Error al parsear datos de VMs{Colors.ENDC}")
+                vms_data = None
+        
+        if vms_data:
+            # Verificar si es un dict o una lista
+            if isinstance(vms_data, dict):
+                # Si es un objeto con estructura de topologías
+                if 'topologias' in vms_data:
+                    topologias = vms_data.get('topologias', [])
+                    for idx, topo in enumerate(topologias, 1):
+                        print(f"\n  {Colors.YELLOW}Topología {idx}:{Colors.ENDC}")
+                        print(f"    Nombre:        {topo.get('nombre', 'N/A')}")
+                        print(f"    Cantidad VMs:  {topo.get('cantidad_vms', 'N/A')}")
+                        print(f"    Internet:      {topo.get('internet', 'no')}")
+                        
+                        vms_list = topo.get('vms', [])
+                        if vms_list:
+                            print(f"\n    {Colors.CYAN}VMs en esta topología:{Colors.ENDC}")
+                            for vm in vms_list:
+                                print(f"\n      • {Colors.BOLD}{vm.get('nombre', 'VM sin nombre')}{Colors.ENDC}")
+                                print(f"        Cores:          {vm.get('cores', 'N/A')}")
+                                print(f"        RAM:            {vm.get('ram', 'N/A')}")
+                                print(f"        Almacenamiento: {vm.get('almacenamiento', 'N/A')}")
+                                print(f"        Imagen:         {vm.get('image', 'N/A')}")
+                                print(f"        Acceso:         {vm.get('acceso', 'no')}")
+                else:
+                    # Es un dict simple con VMs
+                    for vm_key, vm_data in vms_data.items():
+                        if isinstance(vm_data, dict):
+                            print(f"\n  • {Colors.BOLD}{vm_key}{Colors.ENDC}")
+                            for key, value in vm_data.items():
+                                print(f"    {key}: {value}")
+            elif isinstance(vms_data, list):
+                # Es una lista de VMs
+                for idx, vm in enumerate(vms_data, 1):
+                    print(f"\n  • {Colors.BOLD}VM {idx}{Colors.ENDC}")
+                    if isinstance(vm, dict):
+                        print(f"    Nombre:         {vm.get('nombre', 'N/A')}")
+                        print(f"    Cores:          {vm.get('cores', 'N/A')}")
+                        print(f"    RAM:            {vm.get('ram', 'N/A')}")
+                        print(f"    Almacenamiento: {vm.get('almacenamiento', 'N/A')}")
+                        print(f"    Imagen:         {vm.get('image', 'N/A')}")
+    else:
+        print(f"\n{Colors.YELLOW}  No hay información de VMs disponible{Colors.ENDC}")
+    
+    print(f"\n{Colors.GREEN}{'='*80}{Colors.ENDC}")
+    # No llamar pause() aquí para evitar doble pausa
+
+
+def _ver_mis_slices_admin(auth_manager, slice_manager):
+    """
+    Ver solo los slices creados por el ADMIN ACTUAL
+    Usa la API remota y filtra por el usuario admin actual
+    
+    Estructura de datos de la API:
+    - id: INT
+    - usuario: "1-Admin Name" (formato: id-Nombre)
+    - nombre_slice: VARCHAR(200)
+    - vms: JSON
+    - estado: VARCHAR(50)
+    - timestamp: TIMESTAMP
+    """
+    from shared.ui_helpers import print_header, pause
+    from shared.colors import Colors
+    import os
+    
+    print_header(auth_manager.current_user)
+    print(Colors.BOLD + "\n  MIS SLICES (ADMIN)" + Colors.ENDC)
+    print("  " + "="*80)
+    
+    # Obtener token JWT
+    token = getattr(auth_manager, 'api_token', None) or getattr(auth_manager, 'token', None)
+    if not token:
+        print(f"\n{Colors.RED}[ERROR] No se pudo obtener token de autenticación{Colors.ENDC}")
+        print(f"\n{Colors.YELLOW}  No tienes slices creados{Colors.ENDC}")
+        pause()
+        return
+    
+    # Configurar servicio API
+    from core.services.slice_api_service import SliceAPIService
+    api_url = os.getenv('SLICE_API_URL', 'https://localhost:8443')
+    user_email = auth_manager.get_current_user_email()
+    slice_api = SliceAPIService(api_url, token, user_email)
+    
+    # Obtener slices desde la API remota
+    print(f"\n{Colors.CYAN}⏳ Cargando mis slices desde el servidor remoto...{Colors.ENDC}")
+    
+    # Para admin, list_my_slices() devolverá solo sus slices (filtrado por token JWT en backend)
+    slices = slice_api.list_my_slices()
+    
+    if not slices:
+        print(f"\n{Colors.YELLOW}  📋 No tienes slices como admin{Colors.ENDC}")
+        print(f"{Colors.CYAN}  Usa la opción 2 para crear tu primer slice{Colors.ENDC}")
+        pause()
+        return
+    
+    print(f"\n{Colors.GREEN}  Total de mis slices: {len(slices)}{Colors.ENDC}\n")
+    
+    # Mostrar tabla
+    print(f"{Colors.CYAN}{'ID':<8} {'Nombre del Slice':<35} {'Estado':<15} {'Fecha/Hora':<20}{Colors.ENDC}")
+    print("-" * 80)
+    
+    for s in slices:
+        slice_id = str(s.get('id', 'N/A'))[:7]
+        nombre = str(s.get('nombre_slice', 'Sin nombre'))[:34]
+        estado = str(s.get('estado', 'plantilla'))[:14]
+        timestamp = str(s.get('timestamp', 'N/A'))[:19]
+        
+        print(f"{slice_id:<8} {nombre:<35} {estado:<15} {timestamp:<20}")
+    
+    pause()
+
 
 def _eliminar_todos_los_slices_admin(slice_manager):
     """
@@ -336,128 +455,195 @@ def _eliminar_todos_los_slices_admin(slice_manager):
     
     pause()
 
-def _ver_mis_slices_admin(auth_manager, slice_manager):
-    """Ver solo los slices creados por el admin actual"""
+
+def _pausar_reanudar_slice_admin(auth_manager, slice_manager):
+    """Permite al admin pausar o reanudar cualquier slice del sistema usando la API remota"""
     from shared.ui_helpers import print_header, pause
     from shared.colors import Colors
+    import os
+    
+    user = auth_manager.current_user
+    print_header(user)
+    print(Colors.BOLD + "\n  PAUSAR/REANUDAR SLICE (ADMIN)" + Colors.ENDC)
+    print("  " + "="*80)
+    
+    # Obtener token JWT
+    token = getattr(auth_manager, 'api_token', None) or getattr(auth_manager, 'token', None)
+    if not token:
+        print(f"\n{Colors.RED}[ERROR] No se pudo obtener token de autenticación{Colors.ENDC}")
+        pause()
+        return
+    
+    # Configurar servicio API
+    from core.services.slice_api_service import SliceAPIService
+    api_url = os.getenv('SLICE_API_URL', 'https://localhost:8443')
+    user_email = auth_manager.get_current_user_email()
+    slice_api = SliceAPIService(api_url, token, user_email)
+    
+    # Obtener TODOS los slices desde la API remota (admin puede ver todos)
+    print(f"\n{Colors.CYAN}⏳ Cargando slices desde el servidor remoto...{Colors.ENDC}")
+    slices = slice_api.list_all_slices()
+    
+    if not slices:
+        print(f"\n{Colors.YELLOW}  📋 No hay slices en el sistema{Colors.ENDC}")
+        pause()
+        return
+    
+    # Mostrar lista de slices con su estado
+    print(f"\n{Colors.GREEN}  Slices del sistema:{Colors.ENDC}\n")
+    print(f"{Colors.CYAN}{'N°':<4} {'ID':<8} {'Nombre del Slice':<30} {'Usuario':<25} {'Estado':<15}{Colors.ENDC}")
+    print("-" * 82)
+    
+    for idx, s in enumerate(slices, 1):
+        slice_id = str(s.get('id', 'N/A'))[:7]
+        nombre = str(s.get('nombre_slice', 'Sin nombre'))[:29]
+        usuario = str(s.get('usuario', 'N/A'))[:24]
+        estado_raw = s.get('estado', 'activa')
+        
+        # Normalizar estado para mostrar
+        if estado_raw.lower() in ['activa', 'activo']:
+            estado_mostrar = 'activo'
+            estado_color = Colors.GREEN
+        elif estado_raw.lower() in ['pausado', 'pausada', 'inactiva', 'inactivo']:
+            estado_mostrar = 'pausado'
+            estado_color = Colors.YELLOW
+        else:
+            estado_mostrar = estado_raw
+            estado_color = Colors.CYAN
+        
+        print(f"{idx:<4} {slice_id:<8} {nombre:<30} {usuario:<25} {estado_color}{estado_mostrar:<15}{Colors.ENDC}")
+    
+    print(f"\n  0. Cancelar")
+    
+    # Seleccionar slice
+    choice = input(f"\n{Colors.CYAN}Seleccione el slice: {Colors.ENDC}").strip()
+    if choice == '0':
+        print(f"\n{Colors.YELLOW}  Operación cancelada{Colors.ENDC}")
+        pause()
+        return
+    
+    try:
+        idx = int(choice) - 1
+        if 0 <= idx < len(slices):
+            slice_sel = slices[idx]
+            slice_id = slice_sel.get('id')
+            nombre = slice_sel.get('nombre_slice', 'Sin nombre')
+            usuario = slice_sel.get('usuario', 'N/A')
+            estado_raw = slice_sel.get('estado', 'activa')
+            
+            # Normalizar estado para determinar acción
+            estado_normalizado = estado_raw.lower()
+            if estado_normalizado in ['activa', 'activo']:
+                accion = 'pausar'
+                print(f"\n{Colors.YELLOW}¿Desea PAUSAR el slice '{nombre}' del usuario '{usuario}'?{Colors.ENDC}")
+                print(f"   Estado actual: {Colors.GREEN}activo{Colors.ENDC} → Nuevo estado: {Colors.YELLOW}pausado{Colors.ENDC}")
+                print(f"\n   Confirmar (s/n): ", end="")
+            elif estado_normalizado in ['pausado', 'pausada', 'inactiva', 'inactivo']:
+                accion = 'reanudar'
+                print(f"\n{Colors.GREEN}¿Desea REANUDAR el slice '{nombre}' del usuario '{usuario}'?{Colors.ENDC}")
+                print(f"   Estado actual: {Colors.YELLOW}pausado{Colors.ENDC} → Nuevo estado: {Colors.GREEN}activo{Colors.ENDC}")
+                print(f"\n   Confirmar (s/n): ", end="")
+            else:
+                print(f"\n{Colors.RED}❌ Estado no reconocido: {estado_raw}{Colors.ENDC}")
+                pause()
+                return
+            
+            confirmacion = input().strip().lower()
+            if confirmacion != 's':
+                print(f"\n{Colors.YELLOW}  Operación cancelada{Colors.ENDC}")
+                pause()
+                return
+            
+            # Llamar al endpoint correspondiente
+            print(f"\n{Colors.CYAN}⏳ Procesando...{Colors.ENDC}")
+            if accion == 'pausar':
+                result = slice_api.pausar_slice(slice_id)
+            else:
+                result = slice_api.reanudar_slice(slice_id)
+            
+            # Mostrar resultado
+            if result.get('ok'):
+                print(f"\n{Colors.GREEN}✅ {result.get('message')}{Colors.ENDC}")
+                if accion == 'pausar':
+                    print(f"   Nuevo estado: {Colors.YELLOW}pausado{Colors.ENDC}")
+                else:
+                    print(f"   Nuevo estado: {Colors.GREEN}activo{Colors.ENDC}")
+            else:
+                print(f"\n{Colors.RED}❌ Error: {result.get('error')}{Colors.ENDC}")
+        else:
+            print(f"\n{Colors.RED}  ❌ Opción inválida{Colors.ENDC}")
+    except ValueError:
+        print(f"\n{Colors.RED}  ❌ Debe ingresar un número{Colors.ENDC}")
+    except Exception as e:
+        print(f"\n{Colors.RED}❌ Error inesperado: {str(e)}{Colors.ENDC}")
+    
+    pause()
+
+
+def _ver_mis_slices_admin(auth_manager, slice_manager):
+    """
+    Ver solo los slices creados por el ADMIN ACTUAL
+    Usa la API remota y filtra por el usuario admin actual
+    
+    Estructura de datos de la API:
+    - id: INT
+    - usuario: "1-Admin Name" (formato: id-Nombre)
+    - nombre_slice: VARCHAR(200)
+    - vms: JSON
+    - estado: VARCHAR(50)
+    - timestamp: TIMESTAMP
+    """
+    from shared.ui_helpers import print_header, pause
+    from shared.colors import Colors
+    import os
     
     print_header(auth_manager.current_user)
     print(Colors.BOLD + "\n  MIS SLICES (ADMIN)" + Colors.ENDC)
-    print("  " + "="*50)
+    print("  " + "="*80)
     
-    slices = slice_manager.get_slices()
-
-    # Cargar mapa desde base_de_datos.json para salida_internet y conexion_remota
-    db_slices_map = {}
-    try:
-        import json, os
-        db_path = os.path.join(os.getcwd(), 'base_de_datos.json')
-        if os.path.exists(db_path):
-            with open(db_path, 'r', encoding='utf-8') as f:
-                db = json.load(f) or []
-            for item in db if isinstance(db, list) else db.get('slices', []):
-                sid = item.get('id') or item.get('slice_id')
-                if sid is not None:
-                    db_slices_map[str(sid)] = {
-                        'salida_internet': item.get('salida_internet', 'no'),
-                        'vms': item.get('vms', [])
-                    }
-    except Exception:
-        db_slices_map = {}
+    # Obtener token JWT
+    token = getattr(auth_manager, 'api_token', None) or getattr(auth_manager, 'token', None)
+    if not token:
+        print(f"\n{Colors.RED}[ERROR] No se pudo obtener token de autenticación{Colors.ENDC}")
+        print(f"\n{Colors.YELLOW}  No tienes slices creados{Colors.ENDC}")
+        pause()
+        return
     
-    # Obtener email del admin actual
-    admin_email = auth_manager.get_current_user_email()
+    # Configurar servicio API
+    from core.services.slice_api_service import SliceAPIService
+    api_url = os.getenv('SLICE_API_URL', 'https://localhost:8443')
+    user_email = auth_manager.get_current_user_email()
+    slice_api = SliceAPIService(api_url, token, user_email)
     
-    # Solo mostrar slices del admin actual
-    slices_admin = []
+    # Obtener slices desde la API remota
+    print(f"\n{Colors.CYAN}⏳ Cargando mis slices desde el servidor remoto...{Colors.ENDC}")
+    
+    # Para admin, list_my_slices() devolverá solo sus slices (filtrado por token JWT en backend)
+    slices = slice_api.list_my_slices()
+    
+    if not slices:
+        print(f"\n{Colors.YELLOW}  📋 No tienes slices como admin{Colors.ENDC}")
+        print(f"{Colors.CYAN}  Usa la opción 2 para crear tu primer slice{Colors.ENDC}")
+        pause()
+        return
+    
+    print(f"\n{Colors.GREEN}  Total de mis slices: {len(slices)}{Colors.ENDC}\n")
+    
+    # Mostrar tabla
+    print(f"{Colors.CYAN}{'ID':<8} {'Nombre del Slice':<35} {'Estado':<15} {'Fecha/Hora':<20}{Colors.ENDC}")
+    print("-" * 80)
+    
     for s in slices:
-        slice_owner = getattr(s, 'owner', getattr(s, 'usuario', ''))
-        if slice_owner.lower() == admin_email.lower():
-            slices_admin.append(s)
-    
-    if not slices_admin:
-        print(f"\n{Colors.YELLOW}  No tienes slices como admin{Colors.ENDC}")
-        pause()
-        return
-    
-    print(f"\n{Colors.GREEN}  Total de mis slices: {len(slices_admin)}{Colors.ENDC}\n")
-    
-    # Mostrar tabla (incluye Internet)
-    print(f"{Colors.CYAN}{'N°':<4} {'Nombre del Slice':<25} {'Estado':<10} {'Internet':<8}{Colors.ENDC}")
-    print("-" * 48)
-    
-    for i, s in enumerate(slices_admin, 1):
-        nombre = getattr(s, 'nombre', getattr(s, 'name', 'Sin nombre'))[:24]
-        estado = getattr(s, 'status', getattr(s, 'estado', 'activo'))[:9]
-        sid = getattr(s, 'id_slice', getattr(s, 'id', getattr(s, 'slice_id', '')))
-        internet = db_slices_map.get(str(sid), {}).get('salida_internet', 'no')
-        print(f"{i:<4} {nombre:<25} {estado:<10} {internet:<8}")
-    
-    print("\nSeleccione el número de un slice para ver detalles, o 0 para volver:", end=" ")
-    sel = input().strip()
-    
-    if not sel.isdigit() or int(sel) == 0:
-        return
-    
-    idx = int(sel) - 1
-    if idx < 0 or idx >= len(slices_admin):
-        print(f"{Colors.RED}Selección inválida.{Colors.ENDC}")
-        pause()
-        return
-    
-    s = slices_admin[idx]
-
-    # Helper topologías
-    def clean_topo_name(val):
-        val_str = str(val)
-        if '.' in val_str:
-            val_str = val_str.split('.')[-1]
-        return val_str.capitalize()
-    def get_all_topologies(slice_obj):
-        topo_raw = getattr(slice_obj, 'topologia', None) or getattr(slice_obj, 'topology', None) or ''
-        if hasattr(slice_obj, 'topology_segments') and getattr(slice_obj, 'topology_segments', None):
-            return [clean_topo_name(getattr(seg.type, 'value', str(seg.type))) for seg in slice_obj.topology_segments]
-        elif isinstance(topo_raw, str) and '+' in topo_raw:
-            return [clean_topo_name(segment.split('-')[0]) for segment in topo_raw.split('+')]
-        elif isinstance(topo_raw, str) and '-' in topo_raw:
-            return [clean_topo_name(topo_raw.split('-')[0])]
-        elif topo_raw:
-            return [clean_topo_name(topo_raw)]
-        else:
-            return []
-
-    # Mostrar detalles del slice seleccionado
-    print("\n" + Colors.BOLD + f"DETALLES DEL SLICE: {getattr(s, 'name', getattr(s, 'nombre', ''))}" + Colors.ENDC)
-    estado = getattr(s, 'status', getattr(s, 'estado', 'activo'))
-    sid = getattr(s, 'id', getattr(s, 'slice_id', ''))
-    internet = db_slices_map.get(str(sid), {}).get('salida_internet', 'no')
-    print(f"Topologías: {', '.join(get_all_topologies(s))}")
-    print(f"Estado: {estado}")
-    print(f"Salida a internet: {internet}")
-    
-    vms = getattr(s, 'vms', [])
-    print(f"VMs: {len(vms)}")
-    
-    # Obtener vms_db para el slice seleccionado (si existe en el mapa)
-    sid = getattr(s, 'id_slice', getattr(s, 'id', getattr(s, 'slice_id', '')))
-    vms_db = db_slices_map.get(str(sid), {}).get('vms', [])
-    for i, vm in enumerate(vms, 1):
-        print(f"  VM {i}:")
-        campos = ['nombre', 'flavor', 'cpu', 'memory', 'disk', 'imagen']
-        for k in campos:
-            val = getattr(vm, k, None) if not isinstance(vm, dict) else vm.get(k, None)
-            if val is not None:
-                print(f"    {k}: {val}")
-        if isinstance(vm, dict):
-            conexion = vm.get('conexion_remota', 'no')
-        else:
-            conexion = 'no'
-            if 0 <= (i - 1) < len(vms_db):
-                conexion = vms_db[i - 1].get('conexion_remota', 'no')
-        print(f"    conexion_remota: {conexion}")
+        slice_id = str(s.get('id', 'N/A'))[:7]
+        nombre = str(s.get('nombre_slice', 'Sin nombre'))[:34]
+        estado = str(s.get('estado', 'plantilla'))[:14]
+        timestamp = str(s.get('timestamp', 'N/A'))[:19]
+        
+        print(f"{slice_id:<8} {nombre:<35} {estado:<15} {timestamp:<20}")
     
     pause()
-    return
+
+
 def _servicio_monitoreo():
     """Solicita credenciales de Grafana vía API y muestra la respuesta"""
     import requests
@@ -873,6 +1059,19 @@ def _gestionar_usuarios(auth_manager):
     
     print(f"\n{Colors.YELLOW}💡 Los usuarios se gestionan en el sistema de autenticación{Colors.ENDC}")
     print(f"{Colors.CYAN}Acciones disponibles:{Colors.ENDC}")
+    
+    # Obtener token y configurar API service
+    token = getattr(auth_manager, 'api_token', None) or getattr(auth_manager, 'token', None)
+    if not token:
+        print(f"\n{Colors.RED}[ERROR] No se pudo obtener token de autenticación{Colors.ENDC}")
+        pause()
+        return
+    
+    from core.services.slice_api_service import SliceAPIService
+    api_url = os.getenv('SLICE_API_URL', 'https://localhost:8443')
+    user_email = auth_manager.get_current_user_email()
+    slice_api = SliceAPIService(api_url, token, user_email)
+    
     try:
         # Usar constructor interactivo
         builder = SliceBuilder(auth_manager.current_user)

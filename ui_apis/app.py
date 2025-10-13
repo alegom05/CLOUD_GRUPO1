@@ -7,7 +7,7 @@ import sys
 import os
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from core.slice_manager.models import SliceCreate, Slice, VM
+from core.slice_manager.models import SliceCreate, Slice, VM, TopologyType
 from core.slice_manager.manager import SliceManager
 
 # Modelos de respuesta simplificados
@@ -25,6 +25,17 @@ class SlicesListResponse(BaseModel):
 
 class SliceStatusUpdate(BaseModel):
     status: str
+
+# Pydantic model for API (to avoid dataclass forward reference issues)
+class SliceCreateAPI(BaseModel):
+    name: str
+    topology: str  # Will be converted to TopologyType enum
+    num_vms: int
+    cpu: int = 1
+    memory: int = 1024
+    disk: int = 10
+    flavor: str = "small"
+    topology_segments: List[dict] = []
 
 # Configuración de FastAPI
 app = FastAPI(
@@ -85,12 +96,23 @@ async def login(form_data: OAuth2PasswordRequestForm = Depends()):
 
 @app.post("/api/slices", response_model=SliceResponse, status_code=status.HTTP_201_CREATED)
 async def create_slice(
-    slice_data: SliceCreate,
+    slice_data: SliceCreateAPI,
     current_user: dict = Depends(get_current_user)
 ):
     """Crear un nuevo slice"""
     try:
-        slice = await slice_manager.create_slice(slice_data, current_user["username"])
+        # Convert Pydantic model to dataclass
+        slice_create_dc = SliceCreate(
+            name=slice_data.name,
+            topology=TopologyType(slice_data.topology),
+            num_vms=slice_data.num_vms,
+            cpu=slice_data.cpu,
+            memory=slice_data.memory,
+            disk=slice_data.disk,
+            flavor=slice_data.flavor,
+            topology_segments=slice_data.topology_segments
+        )
+        slice = await slice_manager.create_slice(slice_create_dc, current_user["username"])
         return SliceResponse(
             message="Slice creado exitosamente",
             slice=slice
@@ -218,9 +240,22 @@ async def solicitud_creacion(payload: dict = Body(...), current_user: dict = Dep
     except Exception as e:
         return {"error": str(e), "message": "Error al crear el slice desde el servicio externo"}
 
+# Endpoint alternativo para listar slices (compatibilidad)
+@app.get("/slices/listar_slices")
+async def listar_slices(current_user: dict = Depends(get_current_user)):
+    """
+    Listar todos los slices (endpoint alternativo para compatibilidad)
+    """
+    slices = slice_manager.get_slices()
+    return {
+        "slices": slices,
+        "total": len(slices)
+    }
+
 
 if __name__ == "__main__":
     import uvicorn
     print("=== PUCP Cloud Orchestrator API ===")
-    print("Docs disponibles en: http://localhost:8000/docs")
-    uvicorn.run(app, host="0.0.0.0", port=8000, reload=True)
+    print("Servidor iniciado en: https://localhost:8443")
+    # Run without reload to avoid import string requirement
+    uvicorn.run(app, host="0.0.0.0", port=8443)

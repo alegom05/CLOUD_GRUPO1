@@ -8,7 +8,10 @@ import uuid
 
 class SliceManager:
     def __init__(self):
-        self.database_file = "base_de_datos.json"
+        # Buscar base_de_datos.json en el directorio raíz del proyecto
+        current_dir = os.path.dirname(os.path.abspath(__file__))
+        project_root = os.path.dirname(os.path.dirname(current_dir))
+        self.database_file = os.path.join(project_root, "base_de_datos.json")
         self.slices: List[Slice] = self._load_slices()
     
     def _load_slices(self) -> List[Slice]:
@@ -49,7 +52,7 @@ class SliceManager:
                                 vms=vms,
                                 owner=item.get('owner', ''),
                                 created_at=datetime.now(),
-                                status='activo',
+                                status='activa',  # Estado por defecto: activa
                                 salida_internet=topo.get('internet', 'no')
                             )
                             slices.append(slice_obj)
@@ -130,7 +133,7 @@ class SliceManager:
             vms=vms,
             owner=owner,
             created_at=datetime.now(),
-            status="activo"
+            status="activa"  # Estado por defecto: activa
         )
 
         self.slices.append(new_slice)

@@ -5,6 +5,10 @@ Servicio para comunicación con la API de slices
 import requests
 import os
 from typing import List, Dict, Optional
+import urllib3
+
+# Deshabilitar warnings de SSL para certificados autofirmados
+urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
 
 class SliceAPIService:
@@ -30,27 +34,39 @@ class SliceAPIService:
                 verify=False,
                 timeout=15
             )
+            print(f"[DEBUG] Status code: {response.status_code}")
+            print(f"[DEBUG] Response text: {response.text[:200]}")
             if response.status_code in (200, 201):
                 return {"ok": True, "data": response.json()}
             else:
                 return {"ok": False, "error": response.text, "status": response.status_code}
         except Exception as e:
+            print(f"[DEBUG] Exception: {type(e).__name__}: {str(e)}")
             return {"ok": False, "error": str(e)}
     def list_all_slices(self) -> list:
         """
         Listar todos los slices (para admin)
+        Usa el endpoint /slices/listar_slices del servidor remoto
+        
+        Respuesta esperada:
+        {
+          "success": true,
+          "slices": [{"id": 5, "usuario": "...", "nombre_slice": "...", "vms": {...}, "estado": "activa", "timestamp": "..."}]
+        }
         """
         try:
             response = requests.get(
-                f"{self.api_url}/api/slices",
+                f"{self.api_url}/slices/listar_slices",
                 headers=self.headers,
+                verify=False,
                 timeout=10
             )
             if response.status_code == 200:
                 data = response.json()
+                # La API devuelve {"success": true, "slices": [...], "total_slices": N}
                 return data.get('slices', [])
             else:
-                print(f"[ERROR] Error al listar slices: {response.status_code}")
+                print(f"[ERROR] Error al listar slices: {response.status_code} - {response.text}")
                 return []
         except Exception as e:
             print(f"[ERROR] Error al listar slices: {e}")
@@ -59,21 +75,31 @@ class SliceAPIService:
     def list_my_slices(self) -> list:
         """
         Listar los slices del usuario autenticado (cliente)
+        Usa el endpoint /slices/listar_slices del servidor remoto
+        
+        Respuesta esperada:
+        {
+          "success": true,
+          "slices": [{"id": 5, "usuario": "...", "nombre_slice": "...", "vms": {...}, "estado": "activa", "timestamp": "..."}]
+        }
         """
         try:
             response = requests.get(
-                f"{self.api_url}/api/slices",
+                f"{self.api_url}/slices/listar_slices",
                 headers=self.headers,
+                verify=False,
                 timeout=10
             )
             if response.status_code == 200:
                 data = response.json()
-                # Filtrar por usuario si el backend no lo hace
-                if self.user_email:
-                    return [s for s in data.get('slices', []) if s.get('usuario') == self.user_email]
-                return data.get('slices', [])
+                # La API devuelve {"success": true, "slices": [...], "total_slices": N}
+                all_slices = data.get('slices', [])
+                
+                # Los slices ya están filtrados por el backend según el token JWT
+                # No necesitamos filtrar por usuario aquí
+                return all_slices
             else:
-                print(f"[ERROR] Error al listar mis slices: {response.status_code}")
+                print(f"[ERROR] Error al listar mis slices: {response.status_code} - {response.text}")
                 return []
         except Exception as e:
             print(f"[ERROR] Error al listar mis slices: {e}")
@@ -120,6 +146,7 @@ class SliceAPIService:
                 f"{self.api_url}/slices/create",
                 json=payload,
                 headers=self.headers,
+                verify=False,
                 timeout=10
             )
             
@@ -148,6 +175,7 @@ class SliceAPIService:
             response = requests.get(
                 f"{self.api_url}/slices/my-slices",
                 headers=self.headers,
+                verify=False,
                 timeout=10
             )
             
@@ -216,6 +244,7 @@ class SliceAPIService:
             response = requests.get(
                 f"{self.api_url}/slices/{slice_id}",
                 headers=self.headers,
+                verify=False,
                 timeout=10
             )
             
@@ -277,6 +306,7 @@ class SliceAPIService:
             response = requests.delete(
                 f"{self.api_url}/slices/{slice_id}",
                 headers=self.headers,
+                verify=False,
                 timeout=10
             )
             
@@ -285,3 +315,61 @@ class SliceAPIService:
         except Exception as e:
             print(f"[ERROR] Error al eliminar slice: {e}")
             return False
+    
+    def pausar_slice(self, slice_id: int) -> dict:
+        """
+        Pausar un slice
+        
+        Args:
+            slice_id: ID del slice a pausar
+            
+        Returns:
+            dict con {"ok": bool, "message": str, "error": str (opcional)}
+        """
+        try:
+            payload = {"slice_id": slice_id}
+            response = requests.post(
+                f"{self.api_url}/slices/pausar_slice",
+                headers=self.headers,
+                json=payload,
+                verify=False,
+                timeout=10
+            )
+            
+            if response.status_code == 200:
+                data = response.json()
+                return {"ok": True, "message": data.get("message", "Slice pausado correctamente")}
+            else:
+                return {"ok": False, "error": response.text, "status": response.status_code}
+                
+        except Exception as e:
+            return {"ok": False, "error": f"Error al pausar slice: {str(e)}"}
+    
+    def reanudar_slice(self, slice_id: int) -> dict:
+        """
+        Reanudar un slice
+        
+        Args:
+            slice_id: ID del slice a reanudar
+            
+        Returns:
+            dict con {"ok": bool, "message": str, "error": str (opcional)}
+        """
+        try:
+            payload = {"slice_id": slice_id}
+            response = requests.post(
+                f"{self.api_url}/slices/reanudar_slice",
+                headers=self.headers,
+                json=payload,
+                verify=False,
+                timeout=10
+            )
+            
+            if response.status_code == 200:
+                data = response.json()
+                return {"ok": True, "message": data.get("message", "Slice reanudado correctamente")}
+            else:
+                return {"ok": False, "error": response.text, "status": response.status_code}
+                
+        except Exception as e:
+            return {"ok": False, "error": f"Error al reanudar slice: {str(e)}"}

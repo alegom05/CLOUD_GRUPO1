@@ -56,69 +56,99 @@ def cliente_menu(auth_manager, slice_manager, auth_service=None):
         else:
             print(f"\n{Colors.RED}  ❌ Opción inválida{Colors.ENDC}")
             pause()
-def _pausar_reactivar_slice(auth_manager, slice_manager):
-    """Permite pausar o reactivar un slice del usuario actual"""
-    # Obtener slices del usuario usando SliceManager
-    usuario_actual_email = getattr(auth_manager.current_user, 'email', '')
-    usuario_actual_username = getattr(auth_manager.current_user, 'username', '')
-    
-    # Obtener todos los slices del SliceManager
-    all_slices = slice_manager.get_slices()
-    
-    # Filtrar slices del usuario actual (usando email o username, robusto)
-    def es_mi_slice(s):
-        if isinstance(s, dict):
-            slice_user = s.get('usuario') or s.get('owner') or s.get('user')
-            return slice_user == usuario_actual_email or slice_user == usuario_actual_username
-        else:
-            slice_owner = (getattr(s, 'owner', None) or 
-                          getattr(s, 'usuario', None) or 
-                          getattr(s, 'user', None))
-            return slice_owner == usuario_actual_email or slice_owner == usuario_actual_username
-    slices_usuario = [s for s in all_slices if es_mi_slice(s)]
 
-    if not slices_usuario:
-        from shared.ui_helpers import show_info
-        show_info("No tienes slices para pausar/reactivar")
+
+def _pausar_reactivar_slice(auth_manager, slice_manager):
+    """Permite pausar o reactivar un slice del usuario actual usando la API remota"""
+    from shared.ui_helpers import print_header, pause
+    from shared.colors import Colors
+    import os
+    
+    user = auth_manager.current_user
+    print_header(user)
+    print(Colors.BOLD + "\n  PAUSAR/REANUDAR SLICE" + Colors.ENDC)
+    print("  " + "="*80)
+    
+    # Obtener token JWT
+    token = getattr(auth_manager, 'api_token', None) or getattr(auth_manager, 'token', None)
+    if not token:
+        print(f"\n{Colors.RED}[ERROR] No se pudo obtener token de autenticación{Colors.ENDC}")
         pause()
         return
-
-    print(f"\n{Colors.YELLOW}  Seleccione slice a pausar/reactivar:{Colors.ENDC}")
-    for i, s in enumerate(slices_usuario, 1):
-        estado = s.status
-        print(f"  {i}. {s.name} (Estado: {estado})")
+    
+    # Configurar servicio API
+    from core.services.slice_api_service import SliceAPIService
+    api_url = os.getenv('SLICE_API_URL', 'https://localhost:8443')
+    user_email = getattr(user, 'email', None) or getattr(user, 'username', '')
+    slice_api = SliceAPIService(api_url, token, user_email)
+    
+    # Obtener slices desde la API remota
+    print(f"\n{Colors.CYAN}⏳ Cargando slices desde el servidor remoto...{Colors.ENDC}")
+    slices = slice_api.list_my_slices()
+    
+    if not slices:
+        print(f"\n{Colors.YELLOW}  📋 No tienes slices creados{Colors.ENDC}")
+        pause()
+        return
+    
+    # Mostrar lista de slices con su estado
+    print(f"\n{Colors.GREEN}  Tus slices:{Colors.ENDC}\n")
+    for idx, s in enumerate(slices, 1):
+        slice_id = s.get('id', 'N/A')
+        nombre = s.get('nombre_slice', 'Sin nombre')
+        estado = s.get('estado', 'N/A')
+        estado_color = Colors.GREEN if estado == 'activa' else Colors.YELLOW
+        print(f"  {idx}. {nombre} (ID: {slice_id}) - Estado: {estado_color}{estado}{Colors.ENDC}")
+    
     print(f"  0. Cancelar")
-
-    choice = input(f"\n{Colors.CYAN}  Opción: {Colors.ENDC}").strip()
+    
+    # Seleccionar slice
+    choice = input(f"\n{Colors.CYAN}Seleccione el slice: {Colors.ENDC}").strip()
     if choice == '0':
         print(f"\n{Colors.YELLOW}  Operación cancelada{Colors.ENDC}")
         pause()
         return
-
+    
     try:
         idx = int(choice) - 1
-        if 0 <= idx < len(slices_usuario):
-            slice_sel = slices_usuario[idx]
-            from shared.ui_helpers import confirm_action, show_success
-            estado_actual = slice_sel.status
-            nuevo_estado = 'inactivo' if estado_actual == 'activo' else 'activo'
-            accion = 'pausar' if nuevo_estado == 'inactivo' else 'reactivar'
-            if confirm_action(f"¿Desea {accion} el slice '{slice_sel.name}'?"):
-                # Actualizar estado usando SliceManager
-                if slice_manager.update_slice_status(slice_sel.id, nuevo_estado):
-                    show_success(f"Slice {'pausado' if nuevo_estado == 'inactivo' else 'reactivado'} exitosamente")
-                else:
-                    from shared.ui_helpers import show_error
-                    show_error("No se pudo actualizar el estado del slice")
+        if 0 <= idx < len(slices):
+            slice_sel = slices[idx]
+            slice_id = slice_sel.get('id')
+            nombre = slice_sel.get('nombre_slice', 'Sin nombre')
+            estado_actual = slice_sel.get('estado', 'activa')
+            
+            # Determinar acción
+            if estado_actual == 'activa':
+                accion = 'pausar'
+                print(f"\n{Colors.YELLOW}¿Desea PAUSAR el slice '{nombre}'? (s/n): {Colors.ENDC}", end="")
             else:
+                accion = 'reanudar'
+                print(f"\n{Colors.GREEN}¿Desea REANUDAR el slice '{nombre}'? (s/n): {Colors.ENDC}", end="")
+            
+            confirmacion = input().strip().lower()
+            if confirmacion != 's':
                 print(f"\n{Colors.YELLOW}  Operación cancelada{Colors.ENDC}")
+                pause()
+                return
+            
+            # Llamar al endpoint correspondiente
+            if accion == 'pausar':
+                result = slice_api.pausar_slice(slice_id)
+            else:
+                result = slice_api.reanudar_slice(slice_id)
+            
+            # Mostrar resultado
+            if result.get('ok'):
+                print(f"\n{Colors.GREEN}✅ {result.get('message')}{Colors.ENDC}")
+            else:
+                print(f"\n{Colors.RED}❌ Error: {result.get('error')}{Colors.ENDC}")
         else:
             print(f"\n{Colors.RED}  ❌ Opción inválida{Colors.ENDC}")
     except ValueError:
         print(f"\n{Colors.RED}  ❌ Debe ingresar un número{Colors.ENDC}")
     except Exception as e:
-        from shared.ui_helpers import show_error
-        show_error(f"Error: {str(e)}")
+        print(f"\n{Colors.RED}❌ Error inesperado: {str(e)}{Colors.ENDC}")
+    
     pause()
 
 
@@ -201,29 +231,57 @@ def _crear_slice(auth_manager, slice_manager, slice_builder):
                     "topologias": topologias_json
                 }
                 from core.services.slice_api_service import SliceAPIService
-                api_url = os.getenv('SLICE_API_URL', 'http://localhost:8000')
+                api_url = os.getenv('SLICE_API_URL', 'https://localhost:8443')
                 token = getattr(auth_manager, 'api_token', None) or getattr(auth_manager, 'token', None)
+                
+                if not token:
+                    print(f"{Colors.RED}[ERROR] No se pudo obtener token de autenticación{Colors.ENDC}")
+                    print(f"{Colors.YELLOW}Guardando slice localmente...{Colors.ENDC}")
+                    from shared.data_store import guardar_slice
+                    user_email = getattr(auth_manager.current_user, 'email', None) or getattr(auth_manager.current_user, 'username', '')
+                    slice_obj = {
+                        'nombre': nombre,
+                        'topologia': topologia,
+                        'vms': vms_data,
+                        'salida_internet': salida_internet,
+                        'usuario': user_email,
+                        'conexion_topologias': conexion_topologias,
+                        'topologias': topologias_json
+                    }
+                    guardar_slice(slice_obj)
+                    print(f"{Colors.GREEN}Slice '{nombre}' guardado localmente{Colors.ENDC}")
+                    pause()
+                    return
+                
                 user_email = getattr(auth_manager.current_user, 'email', None) or getattr(auth_manager.current_user, 'username', None)
                 slice_api = SliceAPIService(api_url, token, user_email)
-                print(f"{Colors.CYAN}Enviando solicitud de creación de slice a la API...{Colors.ENDC}")
+                
+                print(f"\n{Colors.CYAN}⏳ Enviando solicitud de creación de slice a la API...{Colors.ENDC}")
+                print(f"   URL: {api_url}/slices/solicitud_creacion")
+                
                 resp = slice_api.create_slice_api(nombre, solicitud_json)
+                
                 if resp.get("ok"):
-                    print(f"{Colors.GREEN}Slice '{nombre}' creado exitosamente en la API{Colors.ENDC}")
-                    print(f"  \u2022 Nombre: {nombre}")
-                    print(f"  \u2022 Topologia: {topologia}")
-                    print(f"  \u2022 VMs: {len(vms_data)}")
+                    print(f"\n{Colors.GREEN}✅ Slice '{nombre}' creado exitosamente en la API remota{Colors.ENDC}")
+                    print(f"  • Nombre: {nombre}")
+                    print(f"  • Topología: {topologia}")
+                    print(f"  • VMs: {len(vms_data)}")
                     pause()
                     return
                 else:
-                    print(f"{Colors.RED}  ❌ Error al crear slice en la API: {resp.get('error')}{Colors.ENDC}")
-                    print(f"{Colors.YELLOW}  Guardando localmente como respaldo...{Colors.ENDC}")
+                    error_msg = resp.get('error', 'Error desconocido')
+                    status = resp.get('status', 'N/A')
+                    print(f"\n{Colors.RED}❌ Error al crear slice en la API{Colors.ENDC}")
+                    print(f"   Status: {status}")
+                    print(f"   Error: {error_msg}")
+                    print(f"\n{Colors.YELLOW}⚠️  Guardando localmente como respaldo...{Colors.ENDC}")
                     from shared.data_store import guardar_slice
                     slice_obj = {
                         'nombre': nombre,
                         'topologia': topologia,
                         'vms': vms_data,
                         'salida_internet': salida_internet,
-                        'usuario': getattr(auth_manager.current_user, 'username', ''),
+                        'usuario': user_email,
                         'conexion_topologias': conexion_topologias,
                         'topologias': topologias_json
                     }
@@ -240,140 +298,79 @@ def _crear_slice(auth_manager, slice_manager, slice_builder):
         from shared.ui_helpers import show_error
         show_error(f"Error inesperado: {str(e)}")
         print(f"{Colors.RED}  Detalles técnicos: {e}{Colors.ENDC}")
-def _ver_mis_slices(user):
+def _ver_mis_slices(user, auth_manager=None):
     """
-    Ver slices del usuario
+    Ver slices del usuario obtenidos desde la API remota
+    
+    Estructura de la BD remota:
+    - id: INT AUTO_INCREMENT PRIMARY KEY
+    - usuario: VARCHAR(100) NOT NULL
+    - nombre_slice: VARCHAR(200) NOT NULL
+    - vms: JSON (no se muestra en la lista)
+    - estado: VARCHAR(50) DEFAULT 'plantilla'
+    - timestamp: TIMESTAMP DEFAULT CURRENT_TIMESTAMP
     
     Args:
         user: Usuario actual
+        auth_manager: Gestor de autenticación (para obtener token)
+    """
+    from inspect import currentframe
+    
+    # Si no se pasó auth_manager, intentar obtenerlo del contexto
+    if not auth_manager:
+        frame = currentframe()
+        while frame:
+            if 'auth_manager' in frame.f_locals:
+                auth_manager = frame.f_locals['auth_manager']
+                break
+            frame = frame.f_back
+    
     print_header(user)
     print(Colors.BOLD + "\n  MIS SLICES" + Colors.ENDC)
-    print("  " + "="*50)
-
-    print(f"\n{Colors.CYAN}📁 Cargando slices desde archivos locales...{Colors.ENDC}")
-    import json, os
-    BASE_JSON = os.path.join(os.path.dirname(__file__), '..', '..', 'base_de_datos.json')
-    try:
-        if os.path.exists(BASE_JSON):
-            with open(BASE_JSON, 'r', encoding='utf-8') as f:
-                data = json.load(f) or []
-            slices = data if isinstance(data, list) else data.get('slices', [])
-        else:
-            slices = []
-    except Exception as e:
-        from shared.ui_helpers import show_error
-        show_error(f"Error al leer base_de_datos.json: {str(e)}")
-        slices = []
-
-    usuario_actual = getattr(user, 'username', '')
-    slices_usuario = [s for s in slices if s.get('usuario') == usuario_actual]
-
-    if not slices_usuario:
+    print("  " + "="*80)
+    
+    # Obtener token JWT
+    token = None
+    if auth_manager:
+        if hasattr(auth_manager, 'token'):
+            token = auth_manager.token
+        elif hasattr(auth_manager, 'get_api_token'):
+            token = auth_manager.get_api_token()
+    
+    if not token:
+        print(f"\n{Colors.RED}[ERROR] No se pudo obtener token de autenticación{Colors.ENDC}")
+        print(f"\n{Colors.YELLOW}  No tienes slices creados{Colors.ENDC}")
+        pause()
+        return
+    
+    # Configurar servicio API
+    from core.services.slice_api_service import SliceAPIService
+    api_url = os.getenv('SLICE_API_URL', 'https://localhost:8443')
+    user_email = getattr(user, 'email', None) or getattr(user, 'username', '')
+    slice_api = SliceAPIService(api_url, token, user_email)
+    
+    # Obtener slices desde la API remota
+    print(f"\n{Colors.CYAN}⏳ Cargando slices desde el servidor remoto...{Colors.ENDC}")
+    slices = slice_api.list_my_slices()
+    
+    if not slices:
         print(f"\n{Colors.YELLOW}  📋 No tienes slices creados{Colors.ENDC}")
         print(f"{Colors.CYAN}  Usa la opción 1 para crear tu primer slice{Colors.ENDC}")
     else:
-        print(f"\n{Colors.GREEN}  Total de slices: {len(slices_usuario)}{Colors.ENDC}\n")
-        for i, s in enumerate(slices_usuario, 1):
-            nombre = s.get('nombre', s.get('nombre_slice', 'Sin nombre'))
-            print(f"{Colors.YELLOW}  [{i}] {nombre}{Colors.ENDC}")
-            print(f"      ID: {Colors.CYAN}{s.get('id_slice', 'local')}{Colors.ENDC}")
-            print(f"      Topología: {s.get('topologia', 'N/A')}")
-            print(f"      VMs: {len(s.get('vms', []))}")
-            vms = s.get('vms', [])
-            for idx, vm in enumerate(vms, 1):
-                imagen = vm.get('imagen', 'cirros-0.5.1-x86_64-disk.img')
-                conexion_remota = vm.get('conexion_remota', 'no')
-                    print(f"      VMs: {len(s.get('vms', []))}")
-                    vms = s.get('vms', [])
-                    for idx, vm in enumerate(vms, 1):
-                        imagen = vm.get('imagen', 'cirros-0.5.1-x86_64-disk.img')
-                        conexion_remota = vm.get('conexion_remota', 'no')
-    
-    Args:
-        user: Usuario actual
-    """
-    print_header(user)
-    print(Colors.BOLD + "\n  DETALLES DE SLICE" + Colors.ENDC)
-    print("  " + "="*50)
-    
-    try:
-        print(f"\n{Colors.CYAN}📁 Cargando slices desde archivos locales...{Colors.ENDC}")
-        # Leer slices desde base_de_datos.json
-        import json, os
-        BASE_JSON = os.path.join(os.path.dirname(__file__), '..', '..', 'base_de_datos.json')
-        if os.path.exists(BASE_JSON):
-            with open(BASE_JSON, 'r', encoding='utf-8') as f:
-                data = json.load(f) or []
-            slices = data if isinstance(data, list) else data.get('slices', [])
-        else:
-            slices = []
-
-        # Filtrar slices del usuario actual
-        usuario_actual = getattr(user, 'username', '')
-        slices_usuario = [s for s in slices if s.get('usuario') == usuario_actual]
-
-        if not slices_usuario:
-            from shared.ui_helpers import show_info
-            show_info("No tienes slices")
-            pause()
-            return
-
-        print(f"\n{Colors.CYAN}  Seleccione slice:{Colors.ENDC}")
-        for i, s in enumerate(slices_usuario, 1):
-            nombre = s.get('nombre', s.get('nombre_slice', 'Sin nombre'))
-            print(f"  {i}. {nombre}")
-
-        print(f"  0. Cancelar")
-
-        choice = input(f"\n{Colors.CYAN}  Opción: {Colors.ENDC}").strip()
-
-        if choice == '0':
-            return
-
-        try:
-            idx = int(choice) - 1
-            if 0 <= idx < len(slices_usuario):
-                slice_seleccionado = slices_usuario[idx]
-
-                print_header(user)
-                nombre = slice_seleccionado.get('nombre', slice_seleccionado.get('nombre_slice', 'Sin nombre'))
-                print(Colors.BOLD + f"\n  SLICE: {nombre}" + Colors.ENDC)
-                print("  " + "="*50)
-
-                print(f"\n{Colors.YELLOW}  Información General:{Colors.ENDC}")
-                print(f"  • ID: {slice_seleccionado.get('id', 'local')}")
-                print(f"  • Topología: {slice_seleccionado.get('topologia', 'N/A')}")
-                print(f"  • Estado: {slice_seleccionado.get('estado', 'activo')}")
-                vms = slice_seleccionado.get('vms', [])
-                print(f"CPU por VM: {vms[0].get('cpu', 'N/A') if vms else 'N/A'}")
-                print(f"Memoria por VM: {s.vms[0].memory if s.vms else 'N/A'} MB")
-                print(f"Disco por VM: {s.vms[0].disk if s.vms else 'N/A'} GB")
-                
-                vms = slice_seleccionado.get('vms', [])
-                if vms:
-                    print(f"\n{Colors.YELLOW}  Máquinas Virtuales ({len(vms)}):{Colors.ENDC}")
-                    for vm in vms:
-                        nombre_vm = vm.get('nombre', vm.get('tipo', 'VM'))
-                        print(f"\n  {Colors.CYAN}• {nombre_vm}{Colors.ENDC}")
-                        print(f"    Tipo: {vm.get('tipo', 'N/A')}")
-                        print(f"    Flavor: {vm.get('flavor', 'N/A')}")
-                        print(f"    IP: {vm.get('ip', 'N/A')}")
-                        print(f"    VNC: {vm.get('puerto_vnc', 'N/A')}")
-                        print(f"    Estado: {vm.get('estado', 'activo')}")
-                else:
-                    print(f"\n{Colors.YELLOW}  No hay VMs asociadas{Colors.ENDC}")
-            else:
-                print(f"\n{Colors.RED}  ❌ Opción inválida{Colors.ENDC}")
+        print(f"\n{Colors.GREEN}  Total de slices: {len(slices)}{Colors.ENDC}\n")
         
-        except ValueError:
-            print(f"\n{Colors.RED}  ❌ Debe ingresar un número{Colors.ENDC}")
-        except Exception as e:
-            from shared.ui_helpers import show_error
-            show_error(f"Error: {str(e)}")
-    
-    except Exception as e:
-        from shared.ui_helpers import show_error
-        show_error(f"Error al cargar slices: {str(e)}")
+        # Encabezados de la tabla
+        print(f"{Colors.CYAN}{'ID':<8} {'Nombre del Slice':<35} {'Estado':<15} {'Fecha/Hora':<20}{Colors.ENDC}")
+        print("-" * 80)
+        
+        # Mostrar cada slice
+        for s in slices:
+            slice_id = str(s.get('id', 'N/A'))[:7]
+            nombre = str(s.get('nombre_slice', 'Sin nombre'))[:34]
+            estado = str(s.get('estado', 'plantilla'))[:14]
+            timestamp = str(s.get('timestamp', 'N/A'))[:19]
+            
+            print(f"{slice_id:<8} {nombre:<35} {estado:<15} {timestamp:<20}")
     
     pause()
 
@@ -510,134 +507,159 @@ def _cerrar_sesion(auth_manager, auth_service):
     pause()
 
 def ver_mis_slices_y_detalles(auth_manager, slice_manager):
+    """
+    Ver slices del usuario desde la API remota
+    
+    Estructura de la BD remota:
+    - id: INT AUTO_INCREMENT PRIMARY KEY
+    - usuario: VARCHAR(100) NOT NULL
+    - nombre_slice: VARCHAR(200) NOT NULL
+    - vms: JSON (no se muestra en la tabla)
+    - estado: VARCHAR(50) DEFAULT 'plantilla'
+    - timestamp: TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    """
     from shared.ui_helpers import print_header, pause
     from shared.colors import Colors
+    import os
+    
     user = auth_manager.current_user
-    user_email = getattr(user, 'email', None) or getattr(user, 'username', None)
-    user_username = getattr(user, 'username', None) or getattr(user, 'email', None)
-    # print(f"[DEBUG] user_email: {user_email}")
-    # print(f"[DEBUG] user_username: {user_username}")
     print_header(user)
     print(Colors.BOLD + "\n  MIS SLICES" + Colors.ENDC)
-    # Cargar mapa de datos extra desde JSON (salida_internet y conexion_remota por VM)
-    db_slices_map = {}
-    try:
-        import json, os
-        db_path = os.path.join(os.getcwd(), 'base_de_datos.json')
-        if os.path.exists(db_path):
-            with open(db_path, 'r', encoding='utf-8') as f:
-                db = json.load(f) or {}
-            for item in db.get('slices', []):
-                sid = item.get('id') or item.get('slice_id')
-                if sid:
-                    db_slices_map[str(sid)] = {
-                        'salida_internet': item.get('salida_internet', 'no'),
-                        'vms': item.get('vms', [])
-                    }
-    except Exception:
-        db_slices_map = {}
-
-    from core.services.slice_api_service import SliceAPIService
-    api_url = os.getenv('SLICE_API_URL', 'http://localhost:8000')
+    print("  " + "="*80)
+    
+    # Obtener token JWT
     token = getattr(auth_manager, 'api_token', None) or getattr(auth_manager, 'token', None)
-    user_email = getattr(auth_manager.current_user, 'email', None) or getattr(auth_manager.current_user, 'username', None)
+    if not token:
+        print(f"\n{Colors.RED}[ERROR] No se pudo obtener token de autenticación{Colors.ENDC}")
+        print(f"\n{Colors.YELLOW}  No tienes slices creados{Colors.ENDC}")
+        pause()
+        return
+    
+    # Configurar servicio API
+    from core.services.slice_api_service import SliceAPIService
+    api_url = os.getenv('SLICE_API_URL', 'https://localhost:8443')
+    user_email = getattr(user, 'email', None) or getattr(user, 'username', '')
     slice_api = SliceAPIService(api_url, token, user_email)
+    
+    # Obtener slices desde la API remota
+    print(f"\n{Colors.CYAN}⏳ Cargando slices desde el servidor remoto...{Colors.ENDC}")
     slices = slice_api.list_my_slices()
+    
     if not slices:
-        print("\n  No tienes slices creados")
+        print(f"\n{Colors.YELLOW}  📋 No tienes slices creados{Colors.ENDC}")
+        print(f"{Colors.CYAN}  Usa la opción 1 para crear tu primer slice{Colors.ENDC}")
         pause()
         return
-    # Mostrar tabla
-    print("\n{:<15} {:<40} {:<13} {:<10}".format("ID_SLICE", "Topologias-VMs", "Internet", "Estado"))
-    print("-"*80)
-    def clean_topo_name(val):
-        # Convert enums or other types to string, then clean
-        val_str = str(val)
-        if '.' in val_str:
-            val_str = val_str.split('.')[-1]
-        return val_str.capitalize()
-
-    def get_all_topologies(s):
-        # Returns a list of all topology names for a slice
-        topo_raw = getattr(s, 'topologia', None) or getattr(s, 'topology', None) or ''
-        if hasattr(s, 'topology_segments') and getattr(s, 'topology_segments', None):
-            return [clean_topo_name(seg.type.value) if hasattr(seg.type, 'value') else clean_topo_name(str(seg.type)) for seg in s.topology_segments]
-        elif isinstance(topo_raw, str) and '+' in topo_raw:
-            return [clean_topo_name(segment.split('-')[0]) for segment in topo_raw.split('+')]
-        elif isinstance(topo_raw, str) and '-' in topo_raw:
-            return [clean_topo_name(topo_raw.split('-')[0])]
-        elif topo_raw:
-            return [clean_topo_name(topo_raw)]
+    
+    print(f"\n{Colors.GREEN}  Total de slices: {len(slices)}{Colors.ENDC}\n")
+    
+    # Encabezados de la tabla
+    print(f"{Colors.CYAN}{'ID':<8} {'Nombre del Slice':<35} {'Estado':<15} {'Fecha/Hora':<20}{Colors.ENDC}")
+    print("-" * 80)
+    
+    # Mostrar cada slice
+    for s in slices:
+        slice_id = str(s.get('id', 'N/A'))[:7]
+        nombre = str(s.get('nombre_slice', 'Sin nombre'))[:34]
+        estado = str(s.get('estado', 'plantilla'))[:14]
+        timestamp = str(s.get('timestamp', 'N/A'))[:19]
+        
+        print(f"{slice_id:<8} {nombre:<35} {estado:<15} {timestamp:<20}")
+    
+    # Preguntar si desea ver detalles de algún slice
+    print(f"\n{Colors.CYAN}¿Deseas ver los detalles de algún slice? (s/n): {Colors.ENDC}", end="")
+    respuesta = input().strip().lower()
+    
+    if respuesta == 's':
+        slice_id_input = input(f"\n{Colors.CYAN}Ingresa el ID del slice: {Colors.ENDC}").strip()
+        
+        # Buscar el slice por ID
+        slice_encontrado = None
+        for s in slices:
+            if str(s.get('id')) == slice_id_input:
+                slice_encontrado = s
+                break
+        
+        if slice_encontrado:
+            _mostrar_detalles_slice(slice_encontrado)
         else:
-            return []
-
-    # Ordenar por id_slice (o id)
-    def get_id(s):
-        return getattr(s, 'id', None) or getattr(s, 'slice_id', None) or getattr(s, 'id_slice', None) or ''
-    slices_sorted = sorted(slices, key=get_id)
-    for s in slices_sorted:
-        topologia_literal = getattr(s, 'topologia', None) or getattr(s, 'topology', None) or ''
-        estado = getattr(s, 'status', None) or getattr(s, 'estado', 'activo')
-        vms = getattr(s, 'vms', None) or []
-        topovms = f"{topologia_literal} ({len(vms)} VMs)"
-        sid = get_id(s)
-        internet = db_slices_map.get(str(sid), {}).get('salida_internet', 'no')
-        print("{:<15} {:<40} {:<13} {:<10}".format(sid, topovms, internet, estado))
-    # Selección de slice
-    print("\nSeleccione slice (1, 2, 3, ...) para ver más detalles o 0 para salir:", end=" ")
-    sel = input().strip()
-    if not sel.isdigit() or int(sel) == 0:
-        return
-    idx = int(sel) - 1
-    if idx < 0 or idx >= len(slices):
-        print(Colors.RED + "Selección inválida." + Colors.ENDC)
-        pause()
-        return
-    s = slices[idx]
-    nombre = getattr(s, 'name', None) or getattr(s, 'nombre', '')
-    topo = ', '.join(get_all_topologies(s))
-    print("\n" + Colors.BOLD + f"DETALLES DEL SLICE: {nombre}" + Colors.ENDC)
-    print(f"Topologías: {topo}")
-    print("-"*60)
-    # Mostrar si el slice tiene salida a Internet
-    sid = getattr(s, 'id', None) or getattr(s, 'slice_id', None) or ''
-    internet = db_slices_map.get(str(sid), {}).get('salida_internet', 'no')
-    print(f"Salida a Internet: {internet}")
-    # Mostrar todas las VMs agrupadas por topología
-    topologias = getattr(s, 'topologias', None) or getattr(s, 'topology_segments', None) or []
-    if not topologias and hasattr(s, 'topology') and hasattr(s, 'vms'):
-        # Compatibilidad con modelo antiguo
-        topologias = [{
-            'nombre': getattr(s, 'topology', ''),
-            'vms': [vm for vm in getattr(s, 'vms', [])]
-        }]
-    for topo in topologias:
-        nombre_topo = topo.get('nombre', 'sin nombre')
-        vms_topo = topo.get('vms', [])
-        print(f"\nTopología: {nombre_topo}")
-        for i, vm in enumerate(vms_topo, 1):
-            # Soporta tanto dict como objeto VM
-            if hasattr(vm, 'get'):
-                imagen = vm.get('imagen', vm.get('image', 'cirros-0.5.1-x86_64-disk.img'))
-                conexion_remota = vm.get('conexion_remota', vm.get('acceso', 'no'))
-                campos = ['nombre', 'flavor', 'cpu', 'memory', 'disk', 'imagen']
-                print(f"VM {i} ({imagen}):")
-                for k in campos:
-                    val = vm.get(k, None)
-                    if val is not None and k != 'imagen':
-                        print(f"   {k}: {val}")
-                print(f"   conexion_remota: {conexion_remota}")
-            else:
-                imagen = getattr(vm, 'imagen', None) or getattr(vm, 'image', 'cirros-0.5.1-x86_64-disk.img')
-                conexion_remota = getattr(vm, 'conexion_remota', None) or getattr(vm, 'acceso', 'no')
-                campos = ['nombre', 'flavor', 'cpu', 'memory', 'disk', 'imagen']
-                print(f"VM {i} ({imagen}):")
-                for k in campos:
-                    val = getattr(vm, k, None)
-                    if val is not None and k != 'imagen':
-                        print(f"   {k}: {val}")
-                print(f"   conexion_remota: {conexion_remota}")
-            print("-")
+            print(f"\n{Colors.RED}❌ No se encontró un slice con ID: {slice_id_input}{Colors.ENDC}")
+    
     pause()
-    # Volver a mostrar la lista de slices en vez de salir al menú principal
-    return ver_mis_slices_y_detalles(auth_manager, slice_manager)
+
+
+def _mostrar_detalles_slice(slice_data):
+    """Muestra los detalles completos de un slice incluyendo VMs y topologías"""
+    from shared.colors import Colors
+    from shared.ui_helpers import pause
+    import json
+    
+    print(f"\n{Colors.BOLD}{Colors.GREEN}{'='*80}{Colors.ENDC}")
+    print(f"{Colors.BOLD}  DETALLES DEL SLICE{Colors.ENDC}")
+    print(f"{Colors.GREEN}{'='*80}{Colors.ENDC}")
+    
+    # Información básica del slice
+    print(f"\n{Colors.CYAN}📋 Información General:{Colors.ENDC}")
+    print(f"  ID:            {slice_data.get('id', 'N/A')}")
+    print(f"  Nombre:        {slice_data.get('nombre_slice', 'Sin nombre')}")
+    print(f"  Usuario:       {slice_data.get('usuario', 'N/A')}")
+    print(f"  Estado:        {slice_data.get('estado', 'N/A')}")
+    print(f"  Fecha/Hora:    {slice_data.get('timestamp', 'N/A')}")
+    
+    # Mostrar VMs si existen
+    vms_data = slice_data.get('vms')
+    if vms_data:
+        print(f"\n{Colors.CYAN}🖥️  Máquinas Virtuales:{Colors.ENDC}")
+        
+        # Si vms es un string JSON, parsearlo
+        if isinstance(vms_data, str):
+            try:
+                vms_data = json.loads(vms_data)
+            except:
+                print(f"  {Colors.RED}Error al parsear datos de VMs{Colors.ENDC}")
+                vms_data = None
+        
+        if vms_data:
+            # Verificar si es un dict o una lista
+            if isinstance(vms_data, dict):
+                # Si es un objeto con estructura de topologías
+                if 'topologias' in vms_data:
+                    topologias = vms_data.get('topologias', [])
+                    for idx, topo in enumerate(topologias, 1):
+                        print(f"\n  {Colors.YELLOW}Topología {idx}:{Colors.ENDC}")
+                        print(f"    Nombre:        {topo.get('nombre', 'N/A')}")
+                        print(f"    Cantidad VMs:  {topo.get('cantidad_vms', 'N/A')}")
+                        print(f"    Internet:      {topo.get('internet', 'no')}")
+                        
+                        vms_list = topo.get('vms', [])
+                        if vms_list:
+                            print(f"\n    {Colors.CYAN}VMs en esta topología:{Colors.ENDC}")
+                            for vm in vms_list:
+                                print(f"\n      • {Colors.BOLD}{vm.get('nombre', 'VM sin nombre')}{Colors.ENDC}")
+                                print(f"        Cores:          {vm.get('cores', 'N/A')}")
+                                print(f"        RAM:            {vm.get('ram', 'N/A')}")
+                                print(f"        Almacenamiento: {vm.get('almacenamiento', 'N/A')}")
+                                print(f"        Imagen:         {vm.get('image', 'N/A')}")
+                                print(f"        Acceso:         {vm.get('acceso', 'no')}")
+                else:
+                    # Es un dict simple con VMs
+                    for vm_key, vm_data in vms_data.items():
+                        if isinstance(vm_data, dict):
+                            print(f"\n  • {Colors.BOLD}{vm_key}{Colors.ENDC}")
+                            for key, value in vm_data.items():
+                                print(f"    {key}: {value}")
+            elif isinstance(vms_data, list):
+                # Es una lista de VMs
+                for idx, vm in enumerate(vms_data, 1):
+                    print(f"\n  • {Colors.BOLD}VM {idx}{Colors.ENDC}")
+                    if isinstance(vm, dict):
+                        print(f"    Nombre:         {vm.get('nombre', 'N/A')}")
+                        print(f"    Cores:          {vm.get('cores', 'N/A')}")
+                        print(f"    RAM:            {vm.get('ram', 'N/A')}")
+                        print(f"    Almacenamiento: {vm.get('almacenamiento', 'N/A')}")
+                        print(f"    Imagen:         {vm.get('image', 'N/A')}")
+    else:
+        print(f"\n{Colors.YELLOW}  No hay información de VMs disponible{Colors.ENDC}")
+    
+    print(f"\n{Colors.GREEN}{'='*80}{Colors.ENDC}")
+    # No llamar pause() aquí para evitar doble pausa

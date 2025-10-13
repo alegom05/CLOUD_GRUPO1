@@ -82,7 +82,7 @@ class Slice:
     vms: List[VM]
     owner: str
     created_at: str
-    status: str = "creating"
+    status: str = "activa"  # Estado por defecto: activa (solo puede ser "activa" o "inactiva")
     topology_segments: List[TopologySegment] = field(default_factory=list)
     salida_internet: str = None  # Nuevo campo opcional
 
