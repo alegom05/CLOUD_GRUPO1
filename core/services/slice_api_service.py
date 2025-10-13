@@ -32,7 +32,7 @@ class SliceAPIService:
                 headers=self.headers,
                 json=payload,
                 verify=False,
-                timeout=15
+                timeout=60  # Aumentado a 60 segundos para operaciones de creación
             )
             print(f"[DEBUG] Status code: {response.status_code}")
             print(f"[DEBUG] Response text: {response.text[:200]}")
@@ -40,6 +40,14 @@ class SliceAPIService:
                 return {"ok": True, "data": response.json()}
             else:
                 return {"ok": False, "error": response.text, "status": response.status_code}
+        except requests.exceptions.Timeout:
+            error_msg = "Timeout: El servidor tardó más de 60 segundos en responder. Verifique que el túnel SSH esté activo."
+            print(f"[DEBUG] {error_msg}")
+            return {"ok": False, "error": error_msg}
+        except requests.exceptions.ConnectionError as e:
+            error_msg = f"Error de conexión: No se pudo conectar al servidor. Verifique el túnel SSH: {str(e)}"
+            print(f"[DEBUG] {error_msg}")
+            return {"ok": False, "error": error_msg}
         except Exception as e:
             print(f"[DEBUG] Exception: {type(e).__name__}: {str(e)}")
             return {"ok": False, "error": str(e)}
@@ -59,7 +67,7 @@ class SliceAPIService:
                 f"{self.api_url}/slices/listar_slices",
                 headers=self.headers,
                 verify=False,
-                timeout=10
+                timeout=20  # Aumentado a 20 segundos
             )
             if response.status_code == 200:
                 data = response.json()
@@ -68,6 +76,12 @@ class SliceAPIService:
             else:
                 print(f"[ERROR] Error al listar slices: {response.status_code} - {response.text}")
                 return []
+        except requests.exceptions.Timeout:
+            print(f"[ERROR] Timeout al listar slices. Verifique el túnel SSH.")
+            return []
+        except requests.exceptions.ConnectionError as e:
+            print(f"[ERROR] Error de conexión al listar slices: {str(e)}")
+            return []
         except Exception as e:
             print(f"[ERROR] Error al listar slices: {e}")
             return []
@@ -88,7 +102,7 @@ class SliceAPIService:
                 f"{self.api_url}/slices/listar_slices",
                 headers=self.headers,
                 verify=False,
-                timeout=10
+                timeout=20  # Aumentado a 20 segundos
             )
             if response.status_code == 200:
                 data = response.json()
@@ -101,6 +115,12 @@ class SliceAPIService:
             else:
                 print(f"[ERROR] Error al listar mis slices: {response.status_code} - {response.text}")
                 return []
+        except requests.exceptions.Timeout:
+            print(f"[ERROR] Timeout al listar slices. Verifique el túnel SSH.")
+            return []
+        except requests.exceptions.ConnectionError as e:
+            print(f"[ERROR] Error de conexión al listar slices: {str(e)}")
+            return []
         except Exception as e:
             print(f"[ERROR] Error al listar mis slices: {e}")
             return []
@@ -333,7 +353,7 @@ class SliceAPIService:
                 headers=self.headers,
                 json=payload,
                 verify=False,
-                timeout=10
+                timeout=30  # Aumentado a 30 segundos
             )
             
             if response.status_code == 200:
@@ -342,6 +362,10 @@ class SliceAPIService:
             else:
                 return {"ok": False, "error": response.text, "status": response.status_code}
                 
+        except requests.exceptions.Timeout:
+            return {"ok": False, "error": "Timeout: El servidor tardó más de 30 segundos. Verifique el túnel SSH."}
+        except requests.exceptions.ConnectionError as e:
+            return {"ok": False, "error": f"Error de conexión: {str(e)}"}
         except Exception as e:
             return {"ok": False, "error": f"Error al pausar slice: {str(e)}"}
     
@@ -362,7 +386,7 @@ class SliceAPIService:
                 headers=self.headers,
                 json=payload,
                 verify=False,
-                timeout=10
+                timeout=30  # Aumentado a 30 segundos
             )
             
             if response.status_code == 200:
@@ -371,5 +395,42 @@ class SliceAPIService:
             else:
                 return {"ok": False, "error": response.text, "status": response.status_code}
                 
+        except requests.exceptions.Timeout:
+            return {"ok": False, "error": "Timeout: El servidor tardó más de 30 segundos. Verifique el túnel SSH."}
+        except requests.exceptions.ConnectionError as e:
+            return {"ok": False, "error": f"Error de conexión: {str(e)}"}
         except Exception as e:
             return {"ok": False, "error": f"Error al reanudar slice: {str(e)}"}
+    
+    def eliminar_slice(self, slice_id):
+        """
+        Eliminar un slice
+        
+        Args:
+            slice_id: ID del slice a eliminar
+            
+        Returns:
+            dict con {"ok": bool, "message": str, "error": str (opcional)}
+        """
+        try:
+            payload = {"slice_id": slice_id}
+            response = requests.post(
+                f"{self.api_url}/slices/eliminar_slice",
+                headers=self.headers,
+                json=payload,
+                verify=False,
+                timeout=30  # Aumentado a 30 segundos
+            )
+            
+            if response.status_code == 200:
+                data = response.json()
+                return {"ok": True, "message": data.get("message", "Slice eliminado correctamente")}
+            else:
+                return {"ok": False, "error": response.text, "status": response.status_code}
+                
+        except requests.exceptions.Timeout:
+            return {"ok": False, "error": "Timeout: El servidor tardó más de 30 segundos. Verifique el túnel SSH."}
+        except requests.exceptions.ConnectionError as e:
+            return {"ok": False, "error": f"Error de conexión: {str(e)}"}
+        except Exception as e:
+            return {"ok": False, "error": f"Error al eliminar slice: {str(e)}"}

@@ -95,13 +95,12 @@ def admin_menu(auth_manager, slice_manager, auth_service=None):
                         # Obtener token y configurar API
                         token = getattr(auth_manager, 'api_token', None) or getattr(auth_manager, 'token', None)
                         if token:
-                            from core.services.slice_api_service import SliceAPIService
                             api_url = os.getenv('SLICE_API_URL', 'https://localhost:8443')
                             admin_email = auth_manager.get_current_user_email()
-                            slice_api = SliceAPIService(api_url, token, admin_email)
+                            slice_api_local = SliceAPIService(api_url, token, admin_email)
                             
                             # Crear slice en la API
-                            resultado = slice_api.create_slice_api(nombre, solicitud_json)
+                            resultado = slice_api_local.create_slice_api(nombre, solicitud_json)
                             
                             if resultado.get('ok'):
                                 print(f"{Colors.GREEN}✅ Slice '{nombre}' creado exitosamente en la API remota{Colors.ENDC}")
@@ -152,7 +151,7 @@ def admin_menu(auth_manager, slice_manager, auth_service=None):
                 show_error(f"Error inesperado: {str(e)}")
             return
         elif choice == '3':
-            _eliminar_todos_los_slices_admin(slice_manager)
+            _eliminar_slice_admin(auth_manager, slice_manager)
         elif choice == '4':
             _servicio_monitoreo()
         elif choice == '5':
@@ -163,6 +162,28 @@ def admin_menu(auth_manager, slice_manager, auth_service=None):
         else:
             print(f"\n{Colors.RED}  ❌ Opción inválida{Colors.ENDC}")
             pause()
+
+def _cerrar_sesion(auth_manager, auth_service):
+    """
+    Cerrar sesión limpiando ambos sistemas
+    
+    Args:
+        auth_manager: Gestor de autenticación local
+        auth_service: Servicio de API externa
+    """
+    print(f"\n{Colors.CYAN}👋 Cerrando sesión...{Colors.ENDC}")
+    
+    # Cerrar sesión local
+    auth_manager.logout()
+    print(f"{Colors.GREEN}  ✅ Sesión local cerrada{Colors.ENDC}")
+    
+    # Cerrar sesión en la API externa si existe
+    if auth_service:
+        auth_service.logout()
+        print(f"{Colors.GREEN}  ✅ Sesión API cerrada{Colors.ENDC}")
+    
+    print(f"\n{Colors.CYAN}¡Hasta pronto!{Colors.ENDC}")
+    pause()
 
 def _submenu_ver_slice_admin(auth_manager, slice_manager):
     """Menú para ver slices"""
@@ -191,14 +212,13 @@ def _ver_slices_clientes(slice_manager, auth_manager):
         return
     
     # Configurar servicio API
-    from core.services.slice_api_service import SliceAPIService
     api_url = os.getenv('SLICE_API_URL', 'https://localhost:8443')
     user_email = auth_manager.get_current_user_email()
-    slice_api = SliceAPIService(api_url, token, user_email)
+    slice_api_local = SliceAPIService(api_url, token, user_email)
     
     # Obtener TODOS los slices desde la API
     print(f"\n{Colors.CYAN}⏳ Cargando slices desde el servidor remoto...{Colors.ENDC}")
-    all_slices = slice_api.list_all_slices()
+    all_slices = slice_api_local.list_all_slices()
     
     if not all_slices:
         print(f"\n{Colors.YELLOW}  No hay slices en el sistema{Colors.ENDC}")
@@ -295,6 +315,31 @@ def _mostrar_detalles_slice_admin(slice_data):
                                 print(f"        Almacenamiento: {vm.get('almacenamiento', 'N/A')}")
                                 print(f"        Imagen:         {vm.get('image', 'N/A')}")
                                 print(f"        Acceso:         {vm.get('acceso', 'no')}")
+                                
+                                # Puerto VNC (sumar 5900 al valor de la API)
+                                puerto_vnc_raw = vm.get('puerto_vnc', '')
+                                if puerto_vnc_raw:
+                                    try:
+                                        puerto_calculado = 5900 + int(puerto_vnc_raw)
+                                        print(f"        Puerto VNC:     {Colors.GREEN}{puerto_calculado}{Colors.ENDC}")
+                                    except (ValueError, TypeError):
+                                        print(f"        Puerto VNC:     {Colors.YELLOW}{puerto_vnc_raw}{Colors.ENDC}")
+                                else:
+                                    print(f"        Puerto VNC:     {Colors.YELLOW}No asignado{Colors.ENDC}")
+                                
+                                # Servidor físico
+                                servidor = vm.get('server', '')
+                                if servidor:
+                                    print(f"        Servidor:       {Colors.GREEN}{servidor}{Colors.ENDC}")
+                                else:
+                                    print(f"        Servidor:       {Colors.YELLOW}No asignado{Colors.ENDC}")
+                                
+                                # Conexiones VLANs
+                                conexiones = vm.get('conexiones_vlans', '')
+                                if conexiones:
+                                    print(f"        VLANs:          {Colors.GREEN}{conexiones}{Colors.ENDC}")
+                                else:
+                                    print(f"        VLANs:          {Colors.YELLOW}Sin VLANs{Colors.ENDC}")
                 else:
                     # Es un dict simple con VMs
                     for vm_key, vm_data in vms_data.items():
@@ -349,7 +394,6 @@ def _ver_mis_slices_admin(auth_manager, slice_manager):
         return
     
     # Configurar servicio API
-    from core.services.slice_api_service import SliceAPIService
     api_url = os.getenv('SLICE_API_URL', 'https://localhost:8443')
     user_email = auth_manager.get_current_user_email()
     slice_api = SliceAPIService(api_url, token, user_email)
@@ -475,7 +519,6 @@ def _pausar_reanudar_slice_admin(auth_manager, slice_manager):
         return
     
     # Configurar servicio API
-    from core.services.slice_api_service import SliceAPIService
     api_url = os.getenv('SLICE_API_URL', 'https://localhost:8443')
     user_email = auth_manager.get_current_user_email()
     slice_api = SliceAPIService(api_url, token, user_email)
@@ -580,6 +623,102 @@ def _pausar_reanudar_slice_admin(auth_manager, slice_manager):
     pause()
 
 
+def _eliminar_slice_admin(auth_manager, slice_manager):
+    """Permite al admin eliminar cualquier slice usando la API remota"""
+    from shared.ui_helpers import print_header, pause
+    from shared.colors import Colors
+    import os
+    
+    user = auth_manager.current_user
+    print_header(user)
+    print(Colors.BOLD + "\n  ELIMINAR SLICE (ADMIN)" + Colors.ENDC)
+    print("  " + "="*80)
+    
+    # Obtener token JWT
+    token = getattr(auth_manager, 'api_token', None) or getattr(auth_manager, 'token', None)
+    if not token:
+        print(f"\n{Colors.RED}[ERROR] No se pudo obtener token de autenticación{Colors.ENDC}")
+        pause()
+        return
+    
+    # Configurar servicio API
+    api_url = os.getenv('SLICE_API_URL', 'https://localhost:8443')
+    slice_api = SliceAPIService(api_url=api_url, token=token)
+    
+    # Listar TODOS los slices (admin puede ver todos)
+    slices = slice_api.list_all_slices()
+    
+    if not slices:
+        print(f"\n{Colors.YELLOW}  ℹ️  No hay slices en el sistema{Colors.ENDC}")
+        pause()
+        return
+    
+    # Mostrar slices disponibles en formato tabla
+    print(f"\n{Colors.BOLD}  Slices disponibles:{Colors.ENDC}")
+    print("  " + "-"*95)
+    print(f"  {'ID':<5} {'Nombre':<25} {'Usuario':<25} {'Estado':<15} {'Fecha/Hora':<20}")
+    print("  " + "-"*95)
+    
+    for s in slices:
+        slice_id = s.get('id', 'N/A')
+        nombre = s.get('nombre_slice', 'Sin nombre')
+        usuario = s.get('usuario', 'Desconocido')
+        estado = s.get('estado', 'desconocido')
+        timestamp = s.get('timestamp', 'N/A')
+        print(f"  {slice_id:<5} {nombre:<25} {usuario:<25} {estado:<15} {timestamp:<20}")
+    
+    print("  " + "-"*95)
+    
+    # Solicitar ID del slice a eliminar
+    try:
+        slice_id_input = input(f"\n{Colors.YELLOW}Ingrese el ID del slice a eliminar (0 para cancelar): {Colors.ENDC}")
+        slice_id = int(slice_id_input)
+        
+        if slice_id == 0:
+            print(f"\n{Colors.YELLOW}  ℹ️  Operación cancelada{Colors.ENDC}")
+            pause()
+            return
+        
+        # Verificar que el slice existe
+        slice_encontrado = None
+        for s in slices:
+            if s.get('id') == slice_id:
+                slice_encontrado = s
+                break
+        
+        if not slice_encontrado:
+            print(f"\n{Colors.RED}  ❌ Slice no encontrado{Colors.ENDC}")
+            pause()
+            return
+        
+        # Confirmar eliminación
+        nombre_slice = slice_encontrado.get('nombre_slice', 'Sin nombre')
+        usuario_slice = slice_encontrado.get('usuario', 'Desconocido')
+        confirmacion = input(f"\n{Colors.RED}¿Está seguro de eliminar el slice '{nombre_slice}' (ID: {slice_id}) del usuario '{usuario_slice}'? (s/n): {Colors.ENDC}").lower()
+        
+        if confirmacion != 's':
+            print(f"\n{Colors.YELLOW}  ℹ️  Operación cancelada{Colors.ENDC}")
+            pause()
+            return
+        
+        # Llamar a la API para eliminar
+        print(f"\n{Colors.YELLOW}  ⏳ Eliminando slice...{Colors.ENDC}")
+        result = slice_api.eliminar_slice(slice_id)
+        
+        # Mostrar resultado
+        if result.get('ok'):
+            print(f"\n{Colors.GREEN}✅ {result.get('message')}{Colors.ENDC}")
+        else:
+            print(f"\n{Colors.RED}❌ Error: {result.get('error')}{Colors.ENDC}")
+            
+    except ValueError:
+        print(f"\n{Colors.RED}  ❌ Debe ingresar un número válido{Colors.ENDC}")
+    except Exception as e:
+        print(f"\n{Colors.RED}❌ Error inesperado: {str(e)}{Colors.ENDC}")
+    
+    pause()
+
+
 def _ver_mis_slices_admin(auth_manager, slice_manager):
     """
     Ver solo los slices creados por el ADMIN ACTUAL
@@ -610,7 +749,6 @@ def _ver_mis_slices_admin(auth_manager, slice_manager):
         return
     
     # Configurar servicio API
-    from core.services.slice_api_service import SliceAPIService
     api_url = os.getenv('SLICE_API_URL', 'https://localhost:8443')
     user_email = auth_manager.get_current_user_email()
     slice_api = SliceAPIService(api_url, token, user_email)
@@ -909,95 +1047,6 @@ def _editar_slice_admin(slice_api, auth_manager):
     except Exception as e:
         print(f"\nError al editar slice: {e}")
 
-def _eliminar_slice_admin(slice_api, auth_manager):
-    """
-    Eliminar cualquier slice del sistema (Admin puede eliminar todos)
-    
-    Args:
-        slice_api: Servicio de API de slices
-        auth_manager: Gestor de autenticación
-    """
-    print_header(auth_manager.current_user)
-    print(Colors.BOLD + "\n  ELIMINAR SLICE (ADMIN)" + Colors.ENDC)
-    print("  " + "="*50)
-    
-    # Verificar permisos
-    if not auth_manager.has_permission("delete_any_slice"):
-        print(f"\n{Colors.RED}  ❌ No tiene permisos para eliminar slices{Colors.ENDC}")
-        pause()
-        return
-    
-    try:
-        # Leer todos los slices (de admin y usuarios) desde base_de_datos.json
-        import json, os
-        BASE_JSON = os.path.join(os.path.dirname(__file__), '..', '..', 'base_de_datos.json')
-        if os.path.exists(BASE_JSON):
-            with open(BASE_JSON, 'r', encoding='utf-8') as f:
-                data = json.load(f) or []
-            slices = data if isinstance(data, list) else data.get('slices', [])
-        else:
-            slices = []
-
-        if not slices:
-            from shared.ui_helpers import show_info
-            show_info("No hay slices en el sistema para eliminar")
-            pause()
-            return
-
-        print(f"\n{Colors.YELLOW}  Seleccione slice a eliminar:{Colors.ENDC}")
-        for i, s in enumerate(slices, 1):
-            nombre = s.get('nombre', s.get('nombre_slice', ''))
-            if not nombre or nombre == '' or nombre == s.get('id', None):
-                nombre = s.get('topologia', s.get('topology', 'sin nombre'))
-            usuario = s.get('usuario', 'N/A')
-            print(f"  {i}. {nombre}  |  Usuario: {usuario}")
-
-        print(f"  0. Cancelar")
-
-        choice = input(f"\n{Colors.CYAN}  Opción: {Colors.ENDC}").strip()
-
-        if choice == '0':
-            print(f"\n{Colors.YELLOW}  Operación cancelada{Colors.ENDC}")
-            pause()
-            return
-
-        try:
-            idx = int(choice) - 1
-            if 0 <= idx < len(slices):
-                slice_seleccionado = slices[idx]
-                from shared.ui_helpers import confirm_action, show_success, show_error
-
-                print(f"\n{Colors.RED}  ⚠️  ADVERTENCIA (ADMIN):{Colors.ENDC}")
-                print(f"  Esta acción eliminará permanentemente el slice")
-                print(f"  '{slice_seleccionado.get('nombre', slice_seleccionado.get('nombre_slice', ''))}' del usuario '{slice_seleccionado.get('usuario')}'")
-                print(f"  y todas sus VMs asociadas")
-
-                if confirm_action(f"¿Confirmar eliminación?"):
-                    print(f"\n{Colors.CYAN}⏳ Eliminando slice...{Colors.ENDC}")
-                    # Eliminar slice del archivo
-                    slices = [s for s in slices if s.get('id') != slice_seleccionado.get('id')]
-                    # Guardar la lista actualizada en base_de_datos.json
-                    with open(BASE_JSON, 'w', encoding='utf-8') as f:
-                        json.dump(slices, f, indent=2, ensure_ascii=False)
-                    show_success("Slice eliminado exitosamente por Admin")
-                else:
-                    print(f"\n{Colors.YELLOW}  Eliminación cancelada{Colors.ENDC}")
-            else:
-                print(f"\n{Colors.RED}  ❌ Opción inválida{Colors.ENDC}")
-
-        except ValueError:
-            print(f"\n{Colors.RED}  ❌ Debe ingresar un número{Colors.ENDC}")
-        except Exception as e:
-            from shared.ui_helpers import show_error
-            show_error(f"Error: {str(e)}")
-
-    except Exception as e:
-        from shared.ui_helpers import show_error
-        show_error(f"Error al cargar slices: {str(e)}")
-
-    pause()
-
-
 def _ver_detalles_slice(slice_api, auth_manager):
     """Ver detalles de cualquier slice"""
     if not auth_manager.has_permission("view_all_slices"):
@@ -1067,7 +1116,6 @@ def _gestionar_usuarios(auth_manager):
         pause()
         return
     
-    from core.services.slice_api_service import SliceAPIService
     api_url = os.getenv('SLICE_API_URL', 'https://localhost:8443')
     user_email = auth_manager.get_current_user_email()
     slice_api = SliceAPIService(api_url, token, user_email)

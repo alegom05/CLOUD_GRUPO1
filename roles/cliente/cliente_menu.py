@@ -47,7 +47,7 @@ def cliente_menu(auth_manager, slice_manager, auth_service=None):
         elif choice == '2':
             ver_mis_slices_y_detalles(auth_manager, slice_manager)
         elif choice == '3':
-            _eliminar_slice(auth_manager, slice_manager)
+            _eliminar_slice_cliente(auth_manager, slice_manager)
         elif choice == '4':
             _pausar_reactivar_slice(auth_manager, slice_manager)
         elif choice == '0':
@@ -146,6 +146,101 @@ def _pausar_reactivar_slice(auth_manager, slice_manager):
             print(f"\n{Colors.RED}  ❌ Opción inválida{Colors.ENDC}")
     except ValueError:
         print(f"\n{Colors.RED}  ❌ Debe ingresar un número{Colors.ENDC}")
+    except Exception as e:
+        print(f"\n{Colors.RED}❌ Error inesperado: {str(e)}{Colors.ENDC}")
+    
+    pause()
+
+
+def _eliminar_slice_cliente(auth_manager, slice_manager):
+    """Permite eliminar un slice del usuario actual usando la API remota"""
+    from shared.ui_helpers import print_header, pause
+    from shared.colors import Colors
+    import os
+    
+    user = auth_manager.current_user
+    print_header(user)
+    print(Colors.BOLD + "\n  ELIMINAR SLICE" + Colors.ENDC)
+    print("  " + "="*80)
+    
+    # Obtener token JWT
+    token = getattr(auth_manager, 'api_token', None) or getattr(auth_manager, 'token', None)
+    if not token:
+        print(f"\n{Colors.RED}[ERROR] No se pudo obtener token de autenticación{Colors.ENDC}")
+        pause()
+        return
+    
+    # Configurar servicio API
+    from core.services.slice_api_service import SliceAPIService
+    api_url = os.getenv('SLICE_API_URL', 'https://localhost:8443')
+    api_service = SliceAPIService(api_url=api_url, token=token)
+    
+    # Listar slices del usuario
+    slices = api_service.list_my_slices()
+    
+    if not slices:
+        print(f"\n{Colors.YELLOW}  ℹ️  No tienes slices creados{Colors.ENDC}")
+        pause()
+        return
+    
+    # Mostrar slices disponibles en formato tabla
+    print(f"\n{Colors.BOLD}  Slices disponibles:{Colors.ENDC}")
+    print("  " + "-"*80)
+    print(f"  {'ID':<5} {'Nombre':<30} {'Estado':<15} {'Fecha/Hora':<20}")
+    print("  " + "-"*80)
+    
+    for s in slices:
+        slice_id = s.get('id', 'N/A')
+        nombre = s.get('nombre_slice', 'Sin nombre')
+        estado = s.get('estado', 'desconocido')
+        timestamp = s.get('timestamp', 'N/A')
+        print(f"  {slice_id:<5} {nombre:<30} {estado:<15} {timestamp:<20}")
+    
+    print("  " + "-"*80)
+    
+    # Solicitar ID del slice a eliminar
+    try:
+        slice_id_input = input(f"\n{Colors.YELLOW}Ingrese el ID del slice a eliminar (0 para cancelar): {Colors.ENDC}")
+        slice_id = int(slice_id_input)
+        
+        if slice_id == 0:
+            print(f"\n{Colors.YELLOW}  ℹ️  Operación cancelada{Colors.ENDC}")
+            pause()
+            return
+        
+        # Verificar que el slice existe y pertenece al usuario
+        slice_encontrado = None
+        for s in slices:
+            if s.get('id') == slice_id:
+                slice_encontrado = s
+                break
+        
+        if not slice_encontrado:
+            print(f"\n{Colors.RED}  ❌ Slice no encontrado o no tienes permisos{Colors.ENDC}")
+            pause()
+            return
+        
+        # Confirmar eliminación
+        nombre_slice = slice_encontrado.get('nombre_slice', 'Sin nombre')
+        confirmacion = input(f"\n{Colors.RED}¿Está seguro de eliminar el slice '{nombre_slice}' (ID: {slice_id})? (s/n): {Colors.ENDC}").lower()
+        
+        if confirmacion != 's':
+            print(f"\n{Colors.YELLOW}  ℹ️  Operación cancelada{Colors.ENDC}")
+            pause()
+            return
+        
+        # Llamar a la API para eliminar
+        print(f"\n{Colors.YELLOW}  ⏳ Eliminando slice...{Colors.ENDC}")
+        result = api_service.eliminar_slice(slice_id)
+        
+        # Mostrar resultado
+        if result.get('ok'):
+            print(f"\n{Colors.GREEN}✅ {result.get('message')}{Colors.ENDC}")
+        else:
+            print(f"\n{Colors.RED}❌ Error: {result.get('error')}{Colors.ENDC}")
+            
+    except ValueError:
+        print(f"\n{Colors.RED}  ❌ Debe ingresar un número válido{Colors.ENDC}")
     except Exception as e:
         print(f"\n{Colors.RED}❌ Error inesperado: {str(e)}{Colors.ENDC}")
     
@@ -641,6 +736,31 @@ def _mostrar_detalles_slice(slice_data):
                                 print(f"        Almacenamiento: {vm.get('almacenamiento', 'N/A')}")
                                 print(f"        Imagen:         {vm.get('image', 'N/A')}")
                                 print(f"        Acceso:         {vm.get('acceso', 'no')}")
+                                
+                                # Puerto VNC (sumar 5900 al valor de la API)
+                                puerto_vnc_raw = vm.get('puerto_vnc', '')
+                                if puerto_vnc_raw:
+                                    try:
+                                        puerto_calculado = 5900 + int(puerto_vnc_raw)
+                                        print(f"        Puerto VNC:     {Colors.GREEN}{puerto_calculado}{Colors.ENDC}")
+                                    except (ValueError, TypeError):
+                                        print(f"        Puerto VNC:     {Colors.YELLOW}{puerto_vnc_raw}{Colors.ENDC}")
+                                else:
+                                    print(f"        Puerto VNC:     {Colors.YELLOW}No asignado{Colors.ENDC}")
+                                
+                                # Servidor físico
+                                servidor = vm.get('server', '')
+                                if servidor:
+                                    print(f"        Servidor:       {Colors.GREEN}{servidor}{Colors.ENDC}")
+                                else:
+                                    print(f"        Servidor:       {Colors.YELLOW}No asignado{Colors.ENDC}")
+                                
+                                # Conexiones VLANs
+                                conexiones = vm.get('conexiones_vlans', '')
+                                if conexiones:
+                                    print(f"        VLANs:          {Colors.GREEN}{conexiones}{Colors.ENDC}")
+                                else:
+                                    print(f"        VLANs:          {Colors.YELLOW}Sin VLANs{Colors.ENDC}")
                 else:
                     # Es un dict simple con VMs
                     for vm_key, vm_data in vms_data.items():
